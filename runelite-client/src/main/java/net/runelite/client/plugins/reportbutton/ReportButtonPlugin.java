@@ -37,11 +37,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import javax.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -49,6 +50,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 
 @PluginDescriptor(
 	name = "Report Button",
@@ -93,7 +95,7 @@ public class ReportButtonPlugin extends Plugin
 	{
 		clientThread.invoke(() ->
 		{
-			Widget reportButton = client.getWidget(WidgetInfo.CHATBOX_REPORT_TEXT);
+			Widget reportButton = client.getWidget(ComponentID.CHATBOX_REPORT_TEXT);
 			if (reportButton != null)
 			{
 				reportButton.setText("Report");
@@ -110,7 +112,6 @@ public class ReportButtonPlugin extends Plugin
 		{
 			case LOGGING_IN:
 			case HOPPING:
-			case CONNECTION_LOST:
 				ready = true;
 				break;
 			case LOGGED_IN:
@@ -160,7 +161,7 @@ public class ReportButtonPlugin extends Plugin
 			return;
 		}
 
-		Widget reportButton = client.getWidget(WidgetInfo.CHATBOX_REPORT_TEXT);
+		Widget reportButton = client.getWidget(ComponentID.CHATBOX_REPORT_TEXT);
 		if (reportButton == null)
 		{
 			return;
@@ -180,16 +181,22 @@ public class ReportButtonPlugin extends Plugin
 			case LOGIN_TIME:
 				reportButton.setText(getLoginTime());
 				break;
+			case IDLE_TIME:
+				reportButton.setText(getIdleTime());
+				break;
 			case DATE:
 				reportButton.setText(getDate());
 				break;
 			case GAME_TICKS:
 				reportButton.setText(getGameTicks());
 				break;
-			case OFF:
-				reportButton.setText("Report");
-				break;
 		}
+	}
+
+	private String getIdleTime()
+	{
+		long lastActivity = Long.min(client.getMouseIdleTicks(), client.getKeyboardIdleTicks());
+		return DurationFormatUtils.formatDuration(lastActivity * Constants.CLIENT_TICK_LENGTH, "mm:ss");
 	}
 
 	private String getLoginTime()

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017, Devin French <https://github.com/devinfrench>
  * Copyright (c) 2019, Aleios <https://github.com/aleios>
+ * Copyright (c) 2020, Unmoon <https://github.com/unmoon>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,10 +31,25 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Notification;
 
-@ConfigGroup("itemCharge")
+@ConfigGroup(ItemChargeConfig.GROUP)
 public interface ItemChargeConfig extends Config
 {
+	String GROUP = "itemCharge";
+
+	String KEY_AMULET_OF_BOUNTY = "amuletOfBounty";
+	String KEY_AMULET_OF_CHEMISTRY = "amuletOfChemistry";
+	String KEY_BINDING_NECKLACE = "bindingNecklace";
+	String KEY_BRACELET_OF_SLAUGHTER = "braceletOfSlaughter";
+	String KEY_CHRONICLE = "chronicle";
+	String KEY_DODGY_NECKLACE = "dodgyNecklace";
+	String KEY_EXPEDITIOUS_BRACELET = "expeditiousBracelet";
+	String KEY_EXPLORERS_RING = "explorerRing";
+	String KEY_RING_OF_FORGING = "ringOfForging";
+	String KEY_BLOOD_ESSENCE = "bloodEssence";
+	String KEY_BRACELET_OF_CLAY = "braceletOfClay";
+
 	@ConfigSection(
 		name = "Charge Settings",
 		description = "Configuration for which charges should be displayed",
@@ -50,7 +66,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "veryLowWarningColor",
-		name = "Very Low Warning Color",
+		name = "Very Low Warning",
 		description = "The color of the overlay when charges are very low",
 		position = 1
 	)
@@ -61,7 +77,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "lowWarningColor",
-		name = "Low Warning Color",
+		name = "Low Warning",
 		description = "The color of the overlay when charges are low",
 		position = 2
 	)
@@ -94,7 +110,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showTeleportCharges",
-		name = "Show Teleport Charges",
+		name = "Teleport Charges",
 		description = "Show teleport item charge counts",
 		position = 5,
 		section = chargesSection
@@ -123,32 +139,14 @@ public interface ItemChargeConfig extends Config
 		position = 7,
 		section = notificationSection
 	)
-	default boolean dodgyNotification()
+	default Notification dodgyNotification()
 	{
-		return true;
+		return Notification.ON;
 	}
-
-	@ConfigItem(
-		keyName = "dodgyNecklace",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int dodgyNecklace()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "dodgyNecklace",
-		name = "",
-		description = ""
-	)
-	void dodgyNecklace(int dodgyNecklace);
 
 	@ConfigItem(
 		keyName = "showImpCharges",
-		name = "Show Imp-in-a-box charges",
+		name = "Imp-in-a-box charges",
 		description = "Show Imp-in-a-box item charges",
 		position = 8,
 		section = chargesSection
@@ -160,7 +158,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showFungicideCharges",
-		name = "Show Fungicide Charges",
+		name = "Fungicide Charges",
 		description = "Show Fungicide item charges",
 		position = 9,
 		section = chargesSection
@@ -172,7 +170,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showWateringCanCharges",
-		name = "Show Watering Can Charges",
+		name = "Watering Can Charges",
 		description = "Show Watering can item charges",
 		position = 10,
 		section = chargesSection
@@ -184,7 +182,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showWaterskinCharges",
-		name = "Show Waterskin Charges",
+		name = "Waterskin Charges",
 		description = "Show Waterskin dose counts",
 		position = 11,
 		section = chargesSection
@@ -196,7 +194,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showBellowCharges",
-		name = "Show Bellows Charges",
+		name = "Bellows Charges",
 		description = "Show Ogre bellows item charges",
 		position = 12,
 		section = chargesSection
@@ -208,7 +206,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showBasketCharges",
-		name = "Show Basket Charges",
+		name = "Basket Charges",
 		description = "Show Fruit basket item counts",
 		position = 13,
 		section = chargesSection
@@ -220,7 +218,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showSackCharges",
-		name = "Show Sack Charges",
+		name = "Sack Charges",
 		description = "Show Sack item counts",
 		position = 14,
 		section = chargesSection
@@ -232,7 +230,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showAbyssalBraceletCharges",
-		name = "Show Abyssal Bracelet Charges",
+		name = "Abyssal Bracelet Charges",
 		description = "Show Abyssal bracelet item charges",
 		position = 15,
 		section = chargesSection
@@ -244,7 +242,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showAmuletOfChemistryCharges",
-		name = "Show Amulet of Chemistry Charges",
+		name = "Amulet of Chemistry Charges",
 		description = "Show Amulet of chemistry item charges",
 		position = 16,
 		section = chargesSection
@@ -255,26 +253,8 @@ public interface ItemChargeConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "amuletOfChemistry",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int amuletOfChemistry()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "amuletOfChemistry",
-		name = "",
-		description = ""
-	)
-	void amuletOfChemistry(int amuletOfChemistry);
-
-	@ConfigItem(
 		keyName = "showAmuletOfBountyCharges",
-		name = "Show Amulet of Bounty Charges",
+		name = "Amulet of Bounty Charges",
 		description = "Show Amulet of bounty item charges",
 		position = 17,
 		section = chargesSection
@@ -285,38 +265,20 @@ public interface ItemChargeConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "amuletOfBounty",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int amuletOfBounty()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "amuletOfBounty",
-		name = "",
-		description = ""
-	)
-	void amuletOfBounty(int amuletOfBounty);
-
-	@ConfigItem(
 		keyName = "recoilNotification",
 		name = "Ring of Recoil Notification",
 		description = "Send a notification when a Ring of recoil breaks",
 		position = 18,
 		section = notificationSection
 	)
-	default boolean recoilNotification()
+	default Notification recoilNotification()
 	{
-		return false;
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
 		keyName = "showBindingNecklaceCharges",
-		name = "Show Binding Necklace Charges",
+		name = "Binding Necklace Charges",
 		description = "Show Binding necklace item charges",
 		position = 19,
 		section = chargesSection
@@ -327,38 +289,20 @@ public interface ItemChargeConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "bindingNecklace",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int bindingNecklace()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "bindingNecklace",
-		name = "",
-		description = ""
-	)
-	void bindingNecklace(int bindingNecklace);
-
-	@ConfigItem(
 		keyName = "bindingNotification",
 		name = "Binding Necklace Notification",
 		description = "Send a notification when a Binding necklace breaks",
 		position = 20,
 		section = notificationSection
 	)
-	default boolean bindingNotification()
+	default Notification bindingNotification()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
 		keyName = "showExplorerRingCharges",
-		name = "Show Explorer's Ring Alch Charges",
+		name = "Explorer's Ring Alch Charges",
 		description = "Show Explorer's ring alchemy charges",
 		position = 21,
 		section = chargesSection
@@ -369,26 +313,8 @@ public interface ItemChargeConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "explorerRing",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int explorerRing()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "explorerRing",
-		name = "",
-		description = ""
-	)
-	void explorerRing(int explorerRing);
-
-	@ConfigItem(
 		keyName = "showRingOfForgingCount",
-		name = "Show Ring of Forging Charges",
+		name = "Ring of Forging Charges",
 		description = "Show Ring of forging item charges",
 		position = 22,
 		section = chargesSection
@@ -399,38 +325,20 @@ public interface ItemChargeConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "ringOfForging",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default int ringOfForging()
-	{
-		return -1;
-	}
-
-	@ConfigItem(
-		keyName = "ringOfForging",
-		name = "",
-		description = ""
-	)
-	void ringOfForging(int ringOfForging);
-
-	@ConfigItem(
 		keyName = "ringOfForgingNotification",
 		name = "Ring of Forging Notification",
 		description = "Send a notification when a Ring of forging breaks",
 		position = 23,
 		section = notificationSection
 	)
-	default boolean ringOfForgingNotification()
+	default Notification ringOfForgingNotification()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
 		keyName = "showInfoboxes",
-		name = "Show Infoboxes",
+		name = "Infoboxes",
 		description = "Show an infobox with remaining charges for equipped items",
 		position = 24
 	)
@@ -441,7 +349,7 @@ public interface ItemChargeConfig extends Config
 
 	@ConfigItem(
 		keyName = "showPotionDoseCount",
-		name = "Show Potion Doses",
+		name = "Potion Doses",
 		description = "Show remaining potion doses",
 		position = 25,
 		section = chargesSection
@@ -449,5 +357,113 @@ public interface ItemChargeConfig extends Config
 	default boolean showPotionDoseCount()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showBraceletOfSlaughterCharges",
+		name = "Bracelet of Slaughter Charges",
+		description = "Show Bracelet of Slaughter item charges",
+		position = 26,
+		section = chargesSection
+	)
+	default boolean showBraceletOfSlaughterCharges()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "slaughterNotification",
+		name = "Bracelet of Slaughter Notification",
+		description = "Send a notification when a Bracelet of Slaughter breaks",
+		position = 27,
+		section = notificationSection
+	)
+	default Notification slaughterNotification()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "showExpeditiousBraceletCharges",
+		name = "Expeditious Bracelet Charges",
+		description = "Show Expeditious Bracelet item charges",
+		position = 28,
+		section = chargesSection
+	)
+	default boolean showExpeditiousBraceletCharges()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "expeditiousNotification",
+		name = "Expeditious Bracelet Notification",
+		description = "Send a notification when an Expeditious Bracelet breaks",
+		position = 29,
+		section = notificationSection
+	)
+	default Notification expeditiousNotification()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "showGuthixRestDoses",
+		name = "Guthix Rest Doses",
+		description = "Show Guthix Rest doses",
+		position = 29,
+		section = chargesSection
+	)
+	default boolean showGuthixRestDoses()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showBloodEssenceCharges",
+		name = "Blood Essence Charges",
+		description = "Show Blood Essence charges",
+		position = 30,
+		section = chargesSection
+	)
+	default boolean showBloodEssenceCharges()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showBraceletOfClayCharges",
+		name = "Bracelet of Clay Charges",
+		description = "Show Bracelet of Clay item charges",
+		position = 31,
+		section = chargesSection
+	)
+	default boolean showBraceletOfClayCharges()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "braceletOfClayNotification",
+		name = "Bracelet of Clay Notification",
+		description = "Send a notification when a Bracelet of Clay breaks",
+		position = 32,
+		section = notificationSection
+	)
+	default Notification braceletOfClayNotification()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "amuletOfChemistryNotification",
+		name = "Amulet of Chemistry Notification",
+		description = "Send a notification when an Amulet of Chemistry breaks",
+		position = 33,
+		section = notificationSection
+	)
+	default Notification amuletOfChemistryNotification()
+	{
+		return Notification.ON;
 	}
 }

@@ -24,32 +24,24 @@
  */
 package net.runelite.client.plugins.barbarianassault;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.api.annotations.Component;
+import net.runelite.api.widgets.ComponentID;
 
+@AllArgsConstructor
+@Getter
 enum Role
 {
-	ATTACKER(WidgetInfo.BA_ATK_LISTEN_TEXT, WidgetInfo.BA_ATK_CALL_TEXT, WidgetInfo.BA_ATK_ROLE_TEXT, WidgetInfo.BA_ATK_ROLE_SPRITE),
-	DEFENDER(WidgetInfo.BA_DEF_LISTEN_TEXT, WidgetInfo.BA_DEF_CALL_TEXT, WidgetInfo.BA_DEF_ROLE_TEXT, WidgetInfo.BA_DEF_ROLE_SPRITE),
-	COLLECTOR(WidgetInfo.BA_COLL_LISTEN_TEXT, WidgetInfo.BA_COLL_CALL_TEXT, WidgetInfo.BA_COLL_ROLE_TEXT, WidgetInfo.BA_COLL_ROLE_SPRITE),
-	HEALER(WidgetInfo.BA_HEAL_LISTEN_TEXT, WidgetInfo.BA_HEAL_CALL_TEXT, WidgetInfo.BA_HEAL_ROLE_TEXT, WidgetInfo.BA_HEAL_ROLE_SPRITE);
+	ATTACKER(ComponentID.BA_ATTACKER_ROLE, ComponentID.BA_ATTACKER_ROLE_SPRITE),
+	DEFENDER(ComponentID.BA_DEFENDER_ROLE, ComponentID.BA_DEFENDER_ROLE_SPRITE),
+	COLLECTOR(ComponentID.BA_COLLECTOR_ROLE, ComponentID.BA_COLLECTOR_ROLE_SPRITE),
+	HEALER(ComponentID.BA_HEALER_ROLE, ComponentID.BA_HEALER_ROLE_SPRITE);
 
-	@Getter
-	private final WidgetInfo listen;
-	@Getter
-	private final WidgetInfo call;
-	@Getter
-	private final WidgetInfo roleText;
-	@Getter
-	private final WidgetInfo roleSprite;
-
-	Role(WidgetInfo listen, WidgetInfo call, WidgetInfo role, WidgetInfo roleSprite)
-	{
-		this.listen = listen;
-		this.call = call;
-		this.roleText = role;
-		this.roleSprite = roleSprite;
-	}
+	@Component
+	private final int roleText;
+	@Component
+	private final int roleSprite;
 
 	@Override
 	public String toString()

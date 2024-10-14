@@ -155,9 +155,16 @@ class KeyRemappingListener implements KeyListener
 				}
 			}
 
-			if (plugin.isDialogOpen() && config.space().matches(e))
+			// Do not remap to space key when the options dialog is open, since the options dialog never
+			// listens for space, and the remapped key may be one of keys it listens for.
+			if (plugin.isDialogOpen() && !plugin.isOptionsDialogOpen() && config.space().matches(e))
 			{
 				mappedKeyCode = KeyEvent.VK_SPACE;
+			}
+
+			if (config.control().matches(e))
+			{
+				mappedKeyCode = KeyEvent.VK_CONTROL;
 			}
 
 			if (mappedKeyCode != KeyEvent.VK_UNDEFINED && mappedKeyCode != e.getKeyCode())
@@ -198,7 +205,7 @@ class KeyRemappingListener implements KeyListener
 					plugin.setTyping(false);
 					clientThread.invoke(() ->
 					{
-						client.setVar(VarClientStr.CHATBOX_TYPED_TEXT, "");
+						client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, "");
 						plugin.lockChat();
 					});
 					break;
@@ -208,7 +215,7 @@ class KeyRemappingListener implements KeyListener
 					break;
 				case KeyEvent.VK_BACK_SPACE:
 					// Only lock chat on backspace when the typed text is now empty
-					if (Strings.isNullOrEmpty(client.getVar(VarClientStr.CHATBOX_TYPED_TEXT)))
+					if (Strings.isNullOrEmpty(client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT)))
 					{
 						plugin.setTyping(false);
 						clientThread.invoke(plugin::lockChat);

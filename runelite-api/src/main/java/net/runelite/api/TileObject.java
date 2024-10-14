@@ -27,6 +27,7 @@ package net.runelite.api;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.Shape;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -36,6 +37,21 @@ import net.runelite.api.coords.WorldPoint;
  */
 public interface TileObject
 {
+	int HASH_PLANE_SHIFT = 60;
+
+	/**
+	 * A bitfield containing various flags:
+	 * <pre>{@code
+	 * (RL) plane = bits >> 60 & 3
+	 * worldView = bits >> 49 & 2047
+	 * id = bits >> 17 & 0xffffffff
+	 * wall = bits >> 16 & 1
+	 * type = bits >> 14 & 3
+	 * scene y = bits >> 7 & 127
+	 * scene x = bits >> 0 & 127
+	 * }</pre>
+	 * Type 0 = player, 1 = npc, 2 = game object, 3 = item
+	 */
 	long getHash();
 
 	/**
@@ -53,9 +69,19 @@ public interface TileObject
 	int getY();
 
 	/**
+	 * Gets the vertical coordinate of this object
+	 */
+	int getZ();
+
+	/**
 	 * Gets the plane of the tile that the object is on.
 	 */
 	int getPlane();
+
+	/**
+	 * Gets the WorldView this TileObject is a part of.
+	 */
+	WorldView getWorldView();
 
 	/**
 	 * Gets the ID of the object.
@@ -65,13 +91,25 @@ public interface TileObject
 	 */
 	int getId();
 
+	/**
+	 * Get the world location for this object. For objects which are larger than 1 tile, this is the
+	 * center most tile, rounded to the south-west.
+	 * @return
+	 */
+	@Nonnull
 	WorldPoint getWorldLocation();
 
+	/**
+	 * Get the local location for this object. This point is the center point of the object.
+	 * @return
+	 */
+	@Nonnull
 	LocalPoint getLocalLocation();
 
 	/**
 	 * Calculates the position of the center of this tile on the canvas
 	 */
+	@Nullable
 	Point getCanvasLocation();
 
 	/**
@@ -79,11 +117,13 @@ public interface TileObject
 	 *
 	 * @param zOffset Vertical offset to apply before projection
 	 */
+	@Nullable
 	Point getCanvasLocation(int zOffset);
 
 	/**
 	 * Creates a polygon outlining the tile this object is on
 	 */
+	@Nullable
 	Polygon getCanvasTilePoly();
 
 	/**
@@ -93,6 +133,7 @@ public interface TileObject
 	 * @param zOffset Vertical offset to apply before projection
 	 * @return the canvas point to draw the text at
 	 */
+	@Nullable
 	Point getCanvasTextLocation(Graphics2D graphics, String text, int zOffset);
 
 	/**
@@ -101,6 +142,7 @@ public interface TileObject
 	 *
 	 * @return mini-map location on canvas
 	 */
+	@Nullable
 	Point getMinimapLocation();
 
 	/**

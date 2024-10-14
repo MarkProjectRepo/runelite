@@ -53,12 +53,15 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -107,12 +110,16 @@ public class KourendLibraryPlugin extends Plugin
 	@Inject
 	private ItemManager itemManager;
 
+	@Inject
+	private ClientThread clientThread;
+
 	private KourendLibraryPanel panel;
 	private NavigationButton navButton;
 	private boolean buttonAttached = false;
 	private WorldPoint lastBookcaseClick = null;
 	private WorldPoint lastBookcaseAnimatedOn = null;
-	private EnumSet<Book> playerBooks = null;
+	private EnumSet<Book> playerBooks = EnumSet.noneOf(Book.class);
+	private QuestState depthsOfDespairState = QuestState.FINISHED;
 
 	@Getter(AccessLevel.PACKAGE)
 	private final Set<NPC> npcsToMark = new HashSet<>();
@@ -131,7 +138,7 @@ public class KourendLibraryPlugin extends Plugin
 		panel = injector.getInstance(KourendLibraryPanel.class);
 		panel.init();
 
-		final BufferedImage icon = ImageUtil.getResourceStreamFromClass(getClass(), "panel_icon.png");
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "panel_icon.png");
 
 		navButton = NavigationButton.builder()
 			.tooltip("Kourend Library")
@@ -143,7 +150,13 @@ public class KourendLibraryPlugin extends Plugin
 		overlayManager.add(overlay);
 		overlayManager.add(tutorialOverlay);
 
-		updatePlayerBooks();
+		clientThread.invoke(() ->
+		{
+			if (client.getGameState() == GameState.LOGGED_IN)
+			{
+				updatePlayerBooks();
+			}
+		});
 
 		if (!config.hideButton())
 		{
@@ -160,7 +173,7 @@ public class KourendLibraryPlugin extends Plugin
 		buttonAttached = false;
 		lastBookcaseClick = null;
 		lastBookcaseAnimatedOn = null;
-		playerBooks = null;
+		playerBooks = EnumSet.noneOf(Book.class);
 		npcsToMark.clear();
 	}
 
@@ -215,7 +228,7 @@ public class KourendLibraryPlugin extends Plugin
 	{
 		if (MenuAction.GAME_OBJECT_FIRST_OPTION == menuOpt.getMenuAction() && menuOpt.getMenuTarget().contains("Bookshelf"))
 		{
-			lastBookcaseClick = WorldPoint.fromScene(client, menuOpt.getActionParam(), menuOpt.getWidgetId(), client.getPlane());
+			lastBookcaseClick = WorldPoint.fromScene(client, menuOpt.getParam0(), menuOpt.getParam1(), client.getPlane());
 		}
 	}
 
@@ -231,7 +244,12 @@ public class KourendLibraryPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		if (lastBookcaseAnimatedOn != null && event.getType() == ChatMessageType.GAMEMESSAGE)
+		if (event.getType() != ChatMessageType.GAMEMESSAGE)
+		{
+			return;
+		}
+
+		if (lastBookcaseAnimatedOn != null)
 		{
 			if (event.getMessage().equals("You don't find anything useful here."))
 			{
@@ -239,6 +257,12 @@ public class KourendLibraryPlugin extends Plugin
 				updateBooksPanel();
 				lastBookcaseAnimatedOn = null;
 			}
+		}
+
+		// has a color tag at start
+		if (event.getMessage().endsWith("You hear the shifting of books due to a mysterious force...or are you just hearing things?"))
+		{
+			library.reset();
 		}
 	}
 
@@ -262,6 +286,7 @@ public class KourendLibraryPlugin extends Plugin
 			{
 				if (inRegion)
 				{
+					panel.reload();
 					clientToolbar.addNavigation(navButton);
 				}
 				else
@@ -277,9 +302,11 @@ public class KourendLibraryPlugin extends Plugin
 			return;
 		}
 
+		depthsOfDespairState = Quest.THE_DEPTHS_OF_DESPAIR.getState(client);
+
 		if (lastBookcaseAnimatedOn != null)
 		{
-			Widget find = client.getWidget(WidgetInfo.DIALOG_SPRITE_SPRITE);
+			Widget find = client.getWidget(ComponentID.DIALOG_SPRITE_SPRITE);
 			if (find != null)
 			{
 				Book book = Book.byId(find.getItemId());
@@ -292,12 +319,12 @@ public class KourendLibraryPlugin extends Plugin
 			}
 		}
 
-		Widget npcHead = client.getWidget(WidgetInfo.DIALOG_NPC_HEAD_MODEL);
+		Widget npcHead = client.getWidget(ComponentID.DIALOG_NPC_HEAD_MODEL);
 		if (npcHead != null)
 		{
 			if (isLibraryCustomer(npcHead.getModelId()))
 			{
-				Widget textw = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT);
+				Widget textw = client.getWidget(ComponentID.DIALOG_NPC_TEXT);
 				String text = textw.getText();
 				Matcher m = BOOK_EXTRACTOR.matcher(text);
 				if (m.find())
@@ -410,6 +437,11 @@ public class KourendLibraryPlugin extends Plugin
 				}
 			}
 		}
+	}
+
+	boolean showVarlamoreEnvoy()
+	{
+		return config.alwaysShowVarlamoreEnvoy() || depthsOfDespairState == QuestState.IN_PROGRESS;
 	}
 
 	static boolean isLibraryCustomer(int npcId)

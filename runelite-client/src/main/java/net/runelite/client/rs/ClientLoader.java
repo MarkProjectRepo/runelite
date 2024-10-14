@@ -26,17 +26,14 @@
  */
 package net.runelite.client.rs;
 
-import com.google.archivepatcher.applier.FileByFileV1DeltaApplier;
 import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
-import com.google.common.hash.HashingOutputStream;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
 import java.applet.Applet;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -61,6 +58,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.RuneLite;
 import net.runelite.client.RuneLiteProperties;
+import net.runelite.client.RuntimeConfig;
+import net.runelite.client.RuntimeConfigLoader;
 import static net.runelite.client.rs.ClientUpdateCheckMode.AUTO;
 import static net.runelite.client.rs.ClientUpdateCheckMode.NONE;
 import static net.runelite.client.rs.ClientUpdateCheckMode.VANILLA;
@@ -75,27 +74,30 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 @Slf4j
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "removal"})
 public class ClientLoader implements Supplier<Applet>
 {
 	private static final int NUM_ATTEMPTS = 6;
 	private static File LOCK_FILE = new File(RuneLite.CACHE_DIR, "cache.lock");
 	private static File VANILLA_CACHE = new File(RuneLite.CACHE_DIR, "vanilla.cache");
-	private static File PATCHED_CACHE = new File(RuneLite.CACHE_DIR, "patched.cache");
 
 	private final OkHttpClient okHttpClient;
 	private final ClientConfigLoader clientConfigLoader;
 	private ClientUpdateCheckMode updateCheckMode;
 	private final WorldSupplier worldSupplier;
+	private final RuntimeConfigLoader runtimeConfigLoader;
+	private final String javConfigUrl;
 
 	private Object client;
 
-	public ClientLoader(OkHttpClient okHttpClient, ClientUpdateCheckMode updateCheckMode)
+	public ClientLoader(OkHttpClient okHttpClient, ClientUpdateCheckMode updateCheckMode, RuntimeConfigLoader runtimeConfigLoader, String javConfigUrl)
 	{
 		this.okHttpClient = okHttpClient;
 		this.clientConfigLoader = new ClientConfigLoader(okHttpClient);
 		this.updateCheckMode = updateCheckMode;
 		this.worldSupplier = new WorldSupplier(okHttpClient);
+		this.runtimeConfigLoader = runtimeConfigLoader;
+		this.javConfigUrl = javConfigUrl;
 	}
 
 	@Override
@@ -131,7 +133,7 @@ public class ClientLoader implements Supplier<Applet>
 			ClassLoader classLoader;
 			try (FileChannel lockfile = FileChannel.open(LOCK_FILE.toPath(),
 				StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE);
-				FileLock flock = lockfile.lock())
+				@SuppressWarnings("PMD.UnusedLocalVariable") FileLock flock = lockfile.lock())
 			{
 				SplashScreen.stage(.05, null, "Downloading Old School RuneScape");
 				try
@@ -141,7 +143,7 @@ public class ClientLoader implements Supplier<Applet>
 				catch (IOException ex)
 				{
 					// try again with the fallback config and gamepack
-					if (!config.isFallback())
+					if (javConfigUrl.equals(RuneLiteProperties.getJavConfig()) && !config.isFallback())
 					{
 						log.warn("Unable to download game client, attempting to use fallback config", ex);
 						config = downloadFallbackConfig();
@@ -155,15 +157,21 @@ public class ClientLoader implements Supplier<Applet>
 
 				if (updateCheckMode == AUTO)
 				{
-					SplashScreen.stage(.35, null, "Patching");
-					applyPatch();
+					SplashScreen.stage(.35, null, "Checking version");
+					checkVanillaHash();
 				}
 
 				SplashScreen.stage(.40, null, "Loading client");
-				File jarFile = updateCheckMode == AUTO ? PATCHED_CACHE : VANILLA_CACHE;
-				// create the classloader for the jar while we hold the lock, and eagerly load and link all classes
-				// in the jar. Otherwise the jar can change on disk and can break future classloads.
-				classLoader = createJarClassLoader(jarFile);
+				if (updateCheckMode == VANILLA)
+				{
+					// create the classloader for the jar while we hold the lock, and eagerly load and link all classes
+					// in the jar. Otherwise the jar can change on disk and can break future classloads.
+					classLoader = createJarClassLoader(VANILLA_CACHE);
+				}
+				else
+				{
+					classLoader = ClientLoader.class.getClassLoader();
+				}
 			}
 
 			SplashScreen.stage(.465, "Starting", "Starting Old School RuneScape");
@@ -174,19 +182,26 @@ public class ClientLoader implements Supplier<Applet>
 
 			return rs;
 		}
+		catch (OutageException e)
+		{
+			return e;
+		}
 		catch (IOException | ClassNotFoundException | InstantiationException | IllegalAccessException
 			| VerificationException | SecurityException e)
 		{
 			log.error("Error loading RS!", e);
 
-			SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("loading the client", e));
+			if (!checkOutages())
+			{
+				SwingUtilities.invokeLater(() -> FatalErrorDialog.showNetErrorWindow("loading the client", e));
+			}
 			return e;
 		}
 	}
 
 	private RSConfig downloadConfig() throws IOException
 	{
-		HttpUrl url = HttpUrl.parse(RuneLiteProperties.getJavConfig());
+		HttpUrl url = HttpUrl.get(javConfigUrl);
 		IOException err = null;
 		for (int attempt = 0; attempt < NUM_ATTEMPTS; attempt++)
 		{
@@ -204,6 +219,16 @@ public class ClientLoader implements Supplier<Applet>
 			catch (IOException e)
 			{
 				log.info("Failed to get jav_config from host \"{}\" ({})", url.host(), e.getMessage());
+				if (checkOutages())
+				{
+					throw new OutageException(e);
+				}
+
+				if (!javConfigUrl.equals(RuneLiteProperties.getJavConfig()))
+				{
+					throw e;
+				}
+
 				String host = worldSupplier.get().getAddress();
 				url = url.newBuilder().host(host).build();
 				err = e;
@@ -219,14 +244,14 @@ public class ClientLoader implements Supplier<Applet>
 		catch (IOException ex)
 		{
 			log.debug("error downloading backup config", ex);
-			throw err; // use error from Jagex's servers
+			throw err; // NOPMD: PreserveStackTrace - use error from Jagex's servers
 		}
 	}
 
 	@Nonnull
 	private RSConfig downloadFallbackConfig() throws IOException
 	{
-		RSConfig backupConfig = clientConfigLoader.fetch(HttpUrl.parse(RuneLiteProperties.getJavConfigBackup()));
+		RSConfig backupConfig = clientConfigLoader.fetch(HttpUrl.get(RuneLiteProperties.getJavConfigBackup()));
 
 		if (Strings.isNullOrEmpty(backupConfig.getCodeBase()) || Strings.isNullOrEmpty(backupConfig.getInitialJar()) || Strings.isNullOrEmpty(backupConfig.getInitialClass()))
 		{
@@ -251,7 +276,10 @@ public class ClientLoader implements Supplier<Applet>
 
 	private void updateVanilla(RSConfig config) throws IOException, VerificationException
 	{
-		Certificate[] jagexCertificateChain = getJagexCertificateChain();
+		Certificate[][] jagexCertificateChains = {
+			loadCertificateChain("jagex.crt"),
+			loadCertificateChain("jagex2021.crt")
+		};
 
 		// Get the mtime of the first thing in the vanilla cache
 		// we check this against what the server gives us to let us skip downloading and patching the whole thing
@@ -268,7 +296,7 @@ public class ClientLoader implements Supplier<Applet>
 				JarEntry je = vanillaCacheTest.getNextJarEntry();
 				if (je != null)
 				{
-					verifyJarEntry(je, jagexCertificateChain);
+					verifyJarEntry(je, jagexCertificateChains);
 					vanillaCacheMTime = je.getLastModifiedTime().toMillis();
 				}
 				else
@@ -283,18 +311,23 @@ public class ClientLoader implements Supplier<Applet>
 			}
 			vanilla.position(0);
 
+			if (!vanillaCacheIsInvalid && "false".equals(System.getProperty("runelite.updateVanilla")))
+			{
+				return;
+			}
+
 			// Start downloading the vanilla client
 			HttpUrl url;
 			if (config.isFallback())
 			{
 				// If we are using the backup config, use our own gamepack and ignore the codebase
-				url = HttpUrl.parse(config.getRuneLiteGamepack());
+				url = HttpUrl.get(config.getRuneLiteGamepack());
 			}
 			else
 			{
 				String codebase = config.getCodeBase();
 				String initialJar = config.getInitialJar();
-				url = HttpUrl.parse(codebase + initialJar);
+				url = HttpUrl.get(codebase + initialJar);
 			}
 
 			for (int attempt = 0; ; attempt++)
@@ -347,7 +380,7 @@ public class ClientLoader implements Supplier<Applet>
 						}
 
 						networkJIS.skip(Long.MAX_VALUE);
-						verifyJarEntry(je, jagexCertificateChain);
+						verifyJarEntry(je, jagexCertificateChains);
 						long vanillaClientMTime = je.getLastModifiedTime().toMillis();
 						if (!vanillaCacheIsInvalid && vanillaClientMTime != vanillaCacheMTime)
 						{
@@ -364,7 +397,7 @@ public class ClientLoader implements Supplier<Applet>
 						{
 							// as with the request stream, its important to not early close vanilla too
 							JarInputStream vanillaCacheTest = new JarInputStream(Channels.newInputStream(vanilla));
-							verifyWholeJar(vanillaCacheTest, jagexCertificateChain);
+							verifyWholeJar(vanillaCacheTest, jagexCertificateChains);
 						}
 						catch (Exception e)
 						{
@@ -380,7 +413,7 @@ public class ClientLoader implements Supplier<Applet>
 						OutputStream out = Channels.newOutputStream(vanilla);
 						out.write(preRead.toByteArray());
 						copyStream.setOut(out);
-						verifyWholeJar(networkJIS, jagexCertificateChain);
+						verifyWholeJar(networkJIS, jagexCertificateChains);
 						copyStream.skip(Long.MAX_VALUE); // write the trailer to the file too
 						out.flush();
 						vanilla.truncate(vanilla.position());
@@ -394,9 +427,13 @@ public class ClientLoader implements Supplier<Applet>
 				catch (IOException e)
 				{
 					log.warn("Failed to download gamepack from \"{}\"", url, e);
+					if (checkOutages())
+					{
+						throw new OutageException(e);
+					}
 
 					// With fallback config do 1 attempt (there are no additional urls to try)
-					if (config.isFallback() || attempt >= NUM_ATTEMPTS)
+					if (!javConfigUrl.equals(RuneLiteProperties.getJavConfig()) || config.isFallback() || attempt >= NUM_ATTEMPTS)
 					{
 						throw e;
 					}
@@ -407,18 +444,18 @@ public class ClientLoader implements Supplier<Applet>
 		}
 	}
 
-	private void applyPatch() throws IOException
+	private void checkVanillaHash() throws IOException
 	{
 		byte[] vanillaHash = new byte[64];
-		byte[] appliedPatchHash = new byte[64];
 
 		try (InputStream is = ClientLoader.class.getResourceAsStream("/client.serial"))
 		{
 			if (is == null)
 			{
 				SwingUtilities.invokeLater(() ->
-					new FatalErrorDialog("The client-patch is missing from the classpath. If you are building " +
+					new FatalErrorDialog("The injected-client is missing from the classpath. If you are building " +
 						"the client you need to re-run maven")
+						.addHelpButtons()
 						.addBuildingGuide()
 						.open());
 				throw new NullPointerException();
@@ -426,7 +463,6 @@ public class ClientLoader implements Supplier<Applet>
 
 			DataInputStream dis = new DataInputStream(is);
 			dis.readFully(vanillaHash);
-			dis.readFully(appliedPatchHash);
 		}
 
 		byte[] vanillaCacheHash = Files.asByteSource(VANILLA_CACHE).hash(Hashing.sha512()).asBytes();
@@ -434,40 +470,6 @@ public class ClientLoader implements Supplier<Applet>
 		{
 			log.info("Client is outdated!");
 			updateCheckMode = VANILLA;
-			return;
-		}
-
-		if (PATCHED_CACHE.exists())
-		{
-			byte[] diskBytes = Files.asByteSource(PATCHED_CACHE).hash(Hashing.sha512()).asBytes();
-			if (!Arrays.equals(diskBytes, appliedPatchHash))
-			{
-				log.warn("Cached patch hash mismatches, regenerating patch");
-			}
-			else
-			{
-				log.info("Using cached patched client");
-				return;
-			}
-		}
-
-		try (HashingOutputStream hos = new HashingOutputStream(Hashing.sha512(), new FileOutputStream(PATCHED_CACHE));
-			InputStream patch = ClientLoader.class.getResourceAsStream("/client.patch"))
-		{
-			new FileByFileV1DeltaApplier().applyDelta(VANILLA_CACHE, patch, hos);
-
-			if (!Arrays.equals(hos.hash().asBytes(), appliedPatchHash))
-			{
-				log.error("Patched client hash mismatch");
-				updateCheckMode = VANILLA;
-				return;
-			}
-		}
-		catch (IOException e)
-		{
-			log.error("Unable to apply patch despite hash matching", e);
-			updateCheckMode = VANILLA;
-			return;
 		}
 	}
 
@@ -475,7 +477,9 @@ public class ClientLoader implements Supplier<Applet>
 	{
 		try (JarFile jarFile = new JarFile(jar))
 		{
-			ClassLoader classLoader = new ClassLoader(ClientLoader.class.getClassLoader())
+			// We explicitly use the platform class loader so that the patched classes do not get used
+			// when loading vanilla
+			ClassLoader classLoader = new ClassLoader(ClassLoader.getPlatformClassLoader())
 			{
 				@Override
 				protected Class<?> findClass(String name) throws ClassNotFoundException
@@ -525,7 +529,7 @@ public class ClientLoader implements Supplier<Applet>
 				if (name.endsWith(".class"))
 				{
 					name = name.substring(0, name.length() - 6);
-					classLoader.loadClass(name);
+					classLoader.loadClass(name.replace('/', '.'));
 				}
 			}
 
@@ -539,52 +543,75 @@ public class ClientLoader implements Supplier<Applet>
 		Class<?> clientClass = classLoader.loadClass(initialClass);
 
 		Applet rs = (Applet) clientClass.newInstance();
-		rs.setStub(new RSAppletStub(config));
+		rs.setStub(new RSAppletStub(config, runtimeConfigLoader));
 
 		if (rs instanceof Client)
 		{
-			log.info("client-patch {}", ((Client) rs).getBuildID());
+			log.info("injected-client {}", ((Client) rs).getBuildID());
 		}
 
 		return rs;
 	}
 
-	private static Certificate[] getJagexCertificateChain()
+	private static Certificate[] loadCertificateChain(String name)
 	{
-		try
+		try (InputStream in = ClientLoader.class.getResourceAsStream(name))
 		{
 			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-			Collection<? extends Certificate> certificates = certificateFactory.generateCertificates(ClientLoader.class.getResourceAsStream("jagex.crt"));
+			Collection<? extends Certificate> certificates = certificateFactory.generateCertificates(in);
 			return certificates.toArray(new Certificate[0]);
 		}
-		catch (CertificateException e)
+		catch (CertificateException | IOException e)
 		{
 			throw new RuntimeException("Unable to parse pinned certificates", e);
 		}
 	}
 
-	private void verifyJarEntry(JarEntry je, Certificate[] certs) throws VerificationException
+	private void verifyJarEntry(JarEntry je, Certificate[][] chains) throws VerificationException
 	{
-		switch (je.getName())
+		if (je.getName().equals("META-INF/JAGEXLTD.SF") || je.getName().equals("META-INF/JAGEXLTD.RSA"))
 		{
-			case "META-INF/JAGEXLTD.SF":
-			case "META-INF/JAGEXLTD.RSA":
-				// You can't sign the signing files
-				return;
-			default:
-				if (!Arrays.equals(je.getCertificates(), certs))
-				{
-					throw new VerificationException("Unable to verify jar entry: " + je.getName());
-				}
+			// You can't sign the signing files
+			return;
 		}
+
+		// Jar entry must match one of the trusted certificate chains
+		Certificate[] entryCertificates = je.getCertificates();
+		for (Certificate[] chain : chains)
+		{
+			if (Arrays.equals(entryCertificates, chain))
+			{
+				return;
+			}
+		}
+
+		throw new VerificationException("Unable to verify jar entry: " + je.getName());
 	}
 
-	private void verifyWholeJar(JarInputStream jis, Certificate[] certs) throws IOException, VerificationException
+	private void verifyWholeJar(JarInputStream jis, Certificate[][] chains) throws IOException, VerificationException
 	{
 		for (JarEntry je; (je = jis.getNextJarEntry()) != null; )
 		{
 			jis.skip(Long.MAX_VALUE);
-			verifyJarEntry(je, certs);
+			verifyJarEntry(je, chains);
 		}
+	}
+
+	private static class OutageException extends RuntimeException
+	{
+		private OutageException(Throwable cause)
+		{
+			super(cause);
+		}
+	}
+
+	private boolean checkOutages()
+	{
+		RuntimeConfig rtc = runtimeConfigLoader.tryGet();
+		if (rtc != null)
+		{
+			return rtc.showOutageMessage();
+		}
+		return false;
 	}
 }

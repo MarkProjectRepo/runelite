@@ -29,8 +29,8 @@ import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Notification;
 import net.runelite.client.config.Range;
-import static net.runelite.client.plugins.cannon.CannonPlugin.MAX_CBALLS;
 
 @ConfigGroup("cannon")
 public interface CannonConfig extends Config
@@ -41,17 +41,17 @@ public interface CannonConfig extends Config
 		description = "Configures whether to notify you when your cannon is low on cannonballs",
 		position = 1
 	)
-	default boolean showCannonNotifications()
+	default Notification showCannonNotifications()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@Range(
-		max = MAX_CBALLS
+		max = 60
 	)
 	@ConfigItem(
 		keyName = "lowWarningThreshold",
-		name = "Low Warning Threshold",
+		name = "Low warning threshold",
 		description = "Configures the number of cannonballs remaining before a notification is sent. <br>Regardless of this value, a notification will still be sent when your cannon is empty.",
 		position = 2
 	)
@@ -62,7 +62,7 @@ public interface CannonConfig extends Config
 
 	@ConfigItem(
 		keyName = "showInfobox",
-		name = "Show Cannonball infobox",
+		name = "Show cannonball infobox",
 		description = "Configures whether to show the cannonballs in an infobox",
 		position = 3
 	)
@@ -85,7 +85,7 @@ public interface CannonConfig extends Config
 	@Alpha
 	@ConfigItem(
 		keyName = "highlightDoubleHitColor",
-		name = "Color of double hit spots",
+		name = "Double hit spots",
 		description = "Configures the highlight color of double hit spots",
 		position = 5
 	)

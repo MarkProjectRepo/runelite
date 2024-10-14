@@ -43,7 +43,14 @@ public enum LoginScreenOverride
 	MONKEY_MADNESS_2("mm2.jpg"),
 	PRIFDDINAS("prifddinas.jpg"),
 	THEATRE_OF_BLOOD("tob.jpg"),
-	CUSTOM;
+	A_KINGDOM_DIVIDED("akd.jpg"),
+	NEX("nex.jpg"),
+	TOMBS_OF_AMASCUT("toa.jpg"),
+	VARLAMORE("varlamore.jpg"),
+	VARLAMORE_2("varlamore2.jpg"),
+	WHILE_GUTHIX_SLEEPS("wgs.jpg"),
+	CUSTOM,
+	RANDOM;
 
 	@Getter
 	private final String fileName;

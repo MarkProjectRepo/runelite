@@ -1,8 +1,24 @@
-.id                 279
+.id                 279 ; [proc,bankmain_filteritem]
 .int_stack_count    1
 .string_stack_count 0
 .int_var_count      2 ; +1 for storage of search filter result
 .string_var_count   2
+   iconst                 -1                 ; return value
+   iload                  0                  ; load item id
+   get_varc_string        359
+   lowercase
+   sconst                 "bankSearchFilter" ; push event name
+   runelite_callback                         ; invoke callback
+   pop_int                                   ; pop item id
+   pop_string                                ; pop search string
+   istore                 1                  ; store return value
+   iload                  1                  ; continue if it is still -1
+   iconst                 -1
+   if_icmpeq              CONTINUE
+   iload                  1
+   return                                    ; return rv
+
+CONTINUE:
    sconst                 ""
    sstore                 0
    sconst                 ""
@@ -30,22 +46,6 @@ LABEL19:
    oc_name               
    lowercase             
    sstore                 0
-   iconst                 -1                 ; load return value
-   iload                  0                  ; load item id
-   sload                  0                  ; load item name
-   sload                  1                  ; load search string
-   sconst                 "bankSearchFilter" ; push event name
-   runelite_callback     ; invoke callback
-   pop_int               ; pop item id
-   pop_string            ; pop search string
-   pop_string            ; pop item name
-   istore                 1 ; store return value for the below comparisons
-   iload                  1
-   iconst                 0
-   if_icmpeq              LABEL32 ; return 0
-   iload                  1
-   iconst                 1
-   if_icmpeq              LABEL30 ; return 1
 LABEL23:
    sload                  0
    sload                  1

@@ -44,7 +44,7 @@ public interface OpponentInfoConfig extends Config
 
 	@ConfigItem(
 		keyName = "hitpointsDisplayStyle",
-		name = "Hitpoints display style",
+		name = "Display style",
 		description = "Show opponent's hitpoints as a value (if known), percentage, or both",
 		position = 1
 	)
@@ -62,5 +62,16 @@ public interface OpponentInfoConfig extends Config
 	default boolean showOpponentsInMenu()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showOpponentHealthOverlay",
+		name = "Show opponent health overlay",
+		description = "Shows a health bar overlay when a boss health overlay is not present",
+		position = 4
+	)
+	default boolean showOpponentHealthOverlay()
+	{
+		return true;
 	}
 }

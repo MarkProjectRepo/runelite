@@ -41,7 +41,7 @@ class AgilitySession
 	private Instant lastLapCompleted;
 	private int totalLaps;
 	private int lapsTillGoal;
-	private final EvictingQueue<Duration> lastLapTimes = EvictingQueue.create(10);
+	private final EvictingQueue<Duration> lastLapTimes = EvictingQueue.create(30);
 	private int lapsPerHour;
 
 	AgilitySession(Courses course)
@@ -93,13 +93,5 @@ class AgilitySession
 		}
 
 		lastLapCompleted = now;
-	}
-
-	void resetLapCount()
-	{
-		totalLaps = 0;
-		lapsTillGoal = 0;
-		lastLapTimes.clear();
-		lapsPerHour = 0;
 	}
 }

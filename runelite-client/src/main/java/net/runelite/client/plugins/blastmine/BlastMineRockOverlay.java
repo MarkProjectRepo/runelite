@@ -42,17 +42,17 @@ import net.runelite.api.Point;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ProgressPieComponent;
+import net.runelite.client.util.ColorUtil;
 
 public class BlastMineRockOverlay extends Overlay
 {
 	private static final int MAX_DISTANCE = 16;
-	private static final int WARNING_DISTANCE = 2;
+	private static final int WARNING_DISTANCE = 1;
 	private static final ImmutableSet<Integer> WALL_OBJECTS = ImmutableSet.of(
 		NullObjectID.NULL_28570, NullObjectID.NULL_28571, NullObjectID.NULL_28572, NullObjectID.NULL_28573, NullObjectID.NULL_28574,
 		NullObjectID.NULL_28575, NullObjectID.NULL_28576, NullObjectID.NULL_28577, NullObjectID.NULL_28578,
@@ -91,12 +91,10 @@ public class BlastMineRockOverlay extends Overlay
 		}
 
 		final Tile[][][] tiles = client.getScene().getTiles();
-		final Widget viewport = client.getViewportWidget();
 
 		for (final BlastMineRock rock : rocks.values())
 		{
-			if (viewport == null ||
-				rock.getGameObject().getCanvasLocation() == null ||
+			if (rock.getGameObject().getCanvasLocation() == null ||
 				rock.getGameObject().getWorldLocation().distanceTo(client.getLocalPlayer().getWorldLocation()) > MAX_DISTANCE)
 			{
 				continue;
@@ -202,7 +200,7 @@ public class BlastMineRockOverlay extends Overlay
 
 					if (poly != null)
 					{
-						graphics.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 100));
+						graphics.setColor(ColorUtil.colorWithAlpha(color, (int) (color.getAlpha() / 2.5)));
 						graphics.fillPolygon(poly);
 					}
 				}

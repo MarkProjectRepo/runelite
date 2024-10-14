@@ -25,7 +25,6 @@
  */
 package net.runelite.client.plugins.playerindicators;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -34,10 +33,9 @@ import javax.inject.Singleton;
 import net.runelite.api.FriendsChatRank;
 import net.runelite.api.Player;
 import net.runelite.api.Point;
-import net.runelite.client.game.FriendChatManager;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.util.Text;
 
@@ -49,27 +47,27 @@ public class PlayerIndicatorsOverlay extends Overlay
 
 	private final PlayerIndicatorsService playerIndicatorsService;
 	private final PlayerIndicatorsConfig config;
-	private final FriendChatManager friendChatManager;
+	private final ChatIconManager chatIconManager;
 
 	@Inject
 	private PlayerIndicatorsOverlay(PlayerIndicatorsConfig config, PlayerIndicatorsService playerIndicatorsService,
-		FriendChatManager friendChatManager)
+		ChatIconManager chatIconManager)
 	{
 		this.config = config;
 		this.playerIndicatorsService = playerIndicatorsService;
-		this.friendChatManager = friendChatManager;
+		this.chatIconManager = chatIconManager;
 		setPosition(OverlayPosition.DYNAMIC);
-		setPriority(OverlayPriority.MED);
+		setPriority(PRIORITY_MED);
 	}
 
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		playerIndicatorsService.forEachPlayer((player, color) -> renderPlayerOverlay(graphics, player, color));
+		playerIndicatorsService.forEachPlayer((player, decorations) -> renderPlayerOverlay(graphics, player, decorations));
 		return null;
 	}
 
-	private void renderPlayerOverlay(Graphics2D graphics, Player actor, Color color)
+	private void renderPlayerOverlay(Graphics2D graphics, Player actor, PlayerIndicatorsService.Decorations decorations)
 	{
 		final PlayerNameLocation drawPlayerNamesConfig = config.playerNamePosition();
 		if (drawPlayerNamesConfig == PlayerNameLocation.DISABLED)
@@ -108,41 +106,44 @@ public class PlayerIndicatorsOverlay extends Overlay
 			return;
 		}
 
-		if (config.showFriendsChatRanks() && actor.isFriendsChatMember())
+		BufferedImage rankImage = null;
+		if (decorations.getFriendsChatRank() != null && config.showFriendsChatRanks())
 		{
-			final FriendsChatRank rank = friendChatManager.getRank(name);
-
-			if (rank != FriendsChatRank.UNRANKED)
+			if (decorations.getFriendsChatRank() != FriendsChatRank.UNRANKED)
 			{
-				final BufferedImage rankImage = friendChatManager.getRankImage(rank);
-
-				if (rankImage != null)
-				{
-					final int imageWidth = rankImage.getWidth();
-					final int imageTextMargin;
-					final int imageNegativeMargin;
-
-					if (drawPlayerNamesConfig == PlayerNameLocation.MODEL_RIGHT)
-					{
-						imageTextMargin = imageWidth;
-						imageNegativeMargin = 0;
-					}
-					else
-					{
-						imageTextMargin = imageWidth / 2;
-						imageNegativeMargin = imageWidth / 2;
-					}
-
-					final int textHeight = graphics.getFontMetrics().getHeight() - graphics.getFontMetrics().getMaxDescent();
-					final Point imageLocation = new Point(textLocation.getX() - imageNegativeMargin - 1, textLocation.getY() - textHeight / 2 - rankImage.getHeight() / 2);
-					OverlayUtil.renderImageLocation(graphics, imageLocation, rankImage);
-
-					// move text
-					textLocation = new Point(textLocation.getX() + imageTextMargin, textLocation.getY());
-				}
+				rankImage = chatIconManager.getRankImage(decorations.getFriendsChatRank());
 			}
 		}
+		else if (decorations.getClanTitle() != null && config.showClanChatRanks())
+		{
+			rankImage = chatIconManager.getRankImage(decorations.getClanTitle());
+		}
 
-		OverlayUtil.renderTextLocation(graphics, textLocation, name, color);
+		if (rankImage != null)
+		{
+			final int imageWidth = rankImage.getWidth();
+			final int imageTextMargin;
+			final int imageNegativeMargin;
+
+			if (drawPlayerNamesConfig == PlayerNameLocation.MODEL_RIGHT)
+			{
+				imageTextMargin = imageWidth;
+				imageNegativeMargin = 0;
+			}
+			else
+			{
+				imageTextMargin = imageWidth / 2;
+				imageNegativeMargin = imageWidth / 2;
+			}
+
+			final int textHeight = graphics.getFontMetrics().getHeight() - graphics.getFontMetrics().getMaxDescent();
+			final Point imageLocation = new Point(textLocation.getX() - imageNegativeMargin - 1, textLocation.getY() - textHeight / 2 - rankImage.getHeight() / 2);
+			OverlayUtil.renderImageLocation(graphics, imageLocation, rankImage);
+
+			// move text
+			textLocation = new Point(textLocation.getX() + imageTextMargin, textLocation.getY());
+		}
+
+		OverlayUtil.renderTextLocation(graphics, textLocation, name, decorations.getColor());
 	}
 }

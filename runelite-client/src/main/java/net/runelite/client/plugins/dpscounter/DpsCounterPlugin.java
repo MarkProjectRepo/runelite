@@ -42,14 +42,13 @@ import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.PartyChanged;
+import net.runelite.client.party.PartyMember;
+import net.runelite.client.party.PartyService;
+import net.runelite.client.party.WSClient;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ws.PartyMember;
-import net.runelite.client.ws.PartyService;
-import net.runelite.client.ws.WSClient;
 
 @PluginDescriptor(
 	name = "DPS Counter",
@@ -61,18 +60,45 @@ public class DpsCounterPlugin extends Plugin
 {
 	private static final ImmutableSet<Integer> BOSSES = ImmutableSet.of(
 		ABYSSAL_SIRE, ABYSSAL_SIRE_5887, ABYSSAL_SIRE_5888, ABYSSAL_SIRE_5889, ABYSSAL_SIRE_5890, ABYSSAL_SIRE_5891, ABYSSAL_SIRE_5908,
+		ALCHEMICAL_HYDRA, ALCHEMICAL_HYDRA_8616, ALCHEMICAL_HYDRA_8617, ALCHEMICAL_HYDRA_8618, ALCHEMICAL_HYDRA_8619, ALCHEMICAL_HYDRA_8620, ALCHEMICAL_HYDRA_8621, ALCHEMICAL_HYDRA_8622,
+		AHRIM_THE_BLIGHTED, DHAROK_THE_WRETCHED, GUTHAN_THE_INFESTED, KARIL_THE_TAINTED, TORAG_THE_CORRUPTED, VERAC_THE_DEFILED,
+		ARAXXOR, ARAXXOR_13669,
+		BRYOPHYTA,
 		CALLISTO, CALLISTO_6609,
 		CERBERUS, CERBERUS_5863, CERBERUS_5866,
 		CHAOS_ELEMENTAL, CHAOS_ELEMENTAL_6505,
+		CHAOS_FANATIC,
+		COMMANDER_ZILYANA, COMMANDER_ZILYANA_6493,
 		CORPOREAL_BEAST,
+		CRAZY_ARCHAEOLOGIST,
+		CRYSTALLINE_HUNLLEF, CRYSTALLINE_HUNLLEF_9022, CRYSTALLINE_HUNLLEF_9023, CRYSTALLINE_HUNLLEF_9024,
+		CORRUPTED_HUNLLEF, CORRUPTED_HUNLLEF_9036, CORRUPTED_HUNLLEF_9037, CORRUPTED_HUNLLEF_9038,
+		DAGANNOTH_SUPREME, DAGANNOTH_PRIME, DAGANNOTH_REX, DAGANNOTH_SUPREME_6496, DAGANNOTH_PRIME_6497, DAGANNOTH_REX_6498,
+		DUSK, DAWN, DUSK_7851, DAWN_7852, DAWN_7853, DUSK_7854, DUSK_7855,
 		GENERAL_GRAARDOR, GENERAL_GRAARDOR_6494,
 		GIANT_MOLE, GIANT_MOLE_6499,
+		HESPORI,
 		KALPHITE_QUEEN, KALPHITE_QUEEN_963, KALPHITE_QUEEN_965, KALPHITE_QUEEN_4303, KALPHITE_QUEEN_4304, KALPHITE_QUEEN_6500, KALPHITE_QUEEN_6501,
 		KING_BLACK_DRAGON, KING_BLACK_DRAGON_2642, KING_BLACK_DRAGON_6502,
+		KRAKEN, KRAKEN_6640, KRAKEN_6656,
+		KREEARRA, KREEARRA_6492,
 		KRIL_TSUTSAROTH, KRIL_TSUTSAROTH_6495,
+		THE_MIMIC, THE_MIMIC_8633,
+		NEX, NEX_11279, NEX_11280, NEX_11281, NEX_11282,
+		THE_NIGHTMARE, THE_NIGHTMARE_9426, THE_NIGHTMARE_9427, THE_NIGHTMARE_9428, THE_NIGHTMARE_9429, THE_NIGHTMARE_9430, THE_NIGHTMARE_9431, THE_NIGHTMARE_9432, THE_NIGHTMARE_9433,
+		OBOR,
 		SARACHNIS,
+		SCORPIA,
+		SCURRIUS, SCURRIUS_7222,
+		SKOTIZO,
+		THERMONUCLEAR_SMOKE_DEVIL,
+		TZKALZUK,
+		TZTOKJAD, TZTOKJAD_6506,
 		VENENATIS, VENENATIS_6610,
-		VETION, VETION_REBORN,
+		VETION, VETION_6612,
+		VORKATH, VORKATH_8058, VORKATH_8059, VORKATH_8060, VORKATH_8061,
+		ZALCANO, ZALCANO_9050,
+		ZULRAH, ZULRAH_2043, ZULRAH_2044,
 
 		// ToB
 		THE_MAIDEN_OF_SUGADINTI, THE_MAIDEN_OF_SUGADINTI_8361, THE_MAIDEN_OF_SUGADINTI_8362, THE_MAIDEN_OF_SUGADINTI_8363, THE_MAIDEN_OF_SUGADINTI_8364, THE_MAIDEN_OF_SUGADINTI_8365,
@@ -95,9 +121,7 @@ public class DpsCounterPlugin extends Plugin
 		GUARDIAN, GUARDIAN_7570, GUARDIAN_7571, GUARDIAN_7572,
 		LIZARDMAN_SHAMAN_7573, LIZARDMAN_SHAMAN_7574,
 		ICE_DEMON, ICE_DEMON_7585,
-		SKELETAL_MYSTIC, SKELETAL_MYSTIC_7605, SKELETAL_MYSTIC_7606,
-
-		THE_NIGHTMARE, THE_NIGHTMARE_9426, THE_NIGHTMARE_9427, THE_NIGHTMARE_9428, THE_NIGHTMARE_9429, THE_NIGHTMARE_9430, THE_NIGHTMARE_9431, THE_NIGHTMARE_9432, THE_NIGHTMARE_9433
+		SKELETAL_MYSTIC, SKELETAL_MYSTIC_7605, SKELETAL_MYSTIC_7606
 	);
 
 	@Inject
@@ -163,30 +187,36 @@ public class DpsCounterPlugin extends Plugin
 
 		Hitsplat hitsplat = hitsplatApplied.getHitsplat();
 
+		final int npcId = ((NPC) actor).getId();
+		final boolean isBoss = BOSSES.contains(npcId);
+
 		if (hitsplat.isMine())
 		{
 			int hit = hitsplat.getAmount();
-			// Update local member
 			PartyMember localMember = partyService.getLocalMember();
-			// If not in a party, user local player name
-			final String name = localMember == null ? player.getName() : localMember.getName();
-			DpsMember dpsMember = members.computeIfAbsent(name, DpsMember::new);
-			dpsMember.addDamage(hit);
 
 			// broadcast damage
 			if (localMember != null)
 			{
-				final DpsUpdate specialCounterUpdate = new DpsUpdate(hit);
-				specialCounterUpdate.setMemberId(localMember.getMemberId());
-				wsClient.send(specialCounterUpdate);
+				final DpsUpdate dpsUpdate = new DpsUpdate(hit, isBoss);
+				partyService.send(dpsUpdate);
 			}
+
+			if (dpsConfig.bossDamage() && !isBoss)
+			{
+				return;
+			}
+
+			// If not in a party, user local player name
+			final String name = localMember == null ? player.getName() : localMember.getDisplayName();
+			DpsMember dpsMember = members.computeIfAbsent(name, DpsMember::new);
+			dpsMember.addDamage(hit);
+
 			// apply to total
 		}
 		else if (hitsplat.isOthers())
 		{
-			final int npcId = ((NPC) actor).getId();
-			boolean isBoss = BOSSES.contains(npcId);
-			if (actor != player.getInteracting() && !isBoss)
+			if ((dpsConfig.bossDamage() || actor != player.getInteracting()) && !isBoss)
 			{
 				// only track damage to npcs we are attacking, or is a nearby common boss
 				return;
@@ -205,13 +235,19 @@ public class DpsCounterPlugin extends Plugin
 	@Subscribe
 	public void onDpsUpdate(DpsUpdate dpsUpdate)
 	{
-		if (partyService.getLocalMember().getMemberId().equals(dpsUpdate.getMemberId()))
+		if (partyService.getLocalMember().getMemberId() == dpsUpdate.getMemberId())
 		{
 			return;
 		}
 
-		String name = partyService.getMemberById(dpsUpdate.getMemberId()).getName();
+		String name = partyService.getMemberById(dpsUpdate.getMemberId()).getDisplayName();
 		if (name == null)
+		{
+			return;
+		}
+
+		// Received non-boss damage, but we only want boss damage
+		if (!dpsUpdate.isBoss() && dpsConfig.bossDamage())
 		{
 			return;
 		}
@@ -223,24 +259,6 @@ public class DpsCounterPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onOverlayMenuClicked(OverlayMenuClicked event)
-	{
-		if (event.getEntry() == DpsOverlay.RESET_ENTRY)
-		{
-			members.clear();
-			total.reset();
-		}
-		else if (event.getEntry() == DpsOverlay.UNPAUSE_ENTRY)
-		{
-			unpause();
-		}
-		else if (event.getEntry() == DpsOverlay.PAUSE_ENTRY)
-		{
-			pause();
-		}
-	}
-
-	@Subscribe
 	public void onNpcDespawned(NpcDespawned npcDespawned)
 	{
 		NPC npc = npcDespawned.getNpc();
@@ -249,14 +267,25 @@ public class DpsCounterPlugin extends Plugin
 		{
 			log.debug("Boss has died!");
 
-			if (dpsConfig.autopause())
+			if (dpsConfig.autoreset())
+			{
+				members.values().forEach(DpsMember::reset);
+				total.reset();
+			}
+			else if (dpsConfig.autopause())
 			{
 				pause();
 			}
 		}
 	}
 
-	private void pause()
+	void reset()
+	{
+		members.clear();
+		total.reset();
+	}
+
+	void pause()
 	{
 		if (total.isPaused())
 		{
@@ -274,7 +303,7 @@ public class DpsCounterPlugin extends Plugin
 		dpsOverlay.setPaused(true);
 	}
 
-	private void unpause()
+	void unpause()
 	{
 		if (!total.isPaused())
 		{

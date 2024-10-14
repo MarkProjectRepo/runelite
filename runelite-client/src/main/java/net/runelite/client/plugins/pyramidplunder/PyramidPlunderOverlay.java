@@ -35,8 +35,8 @@ import net.runelite.api.ObjectComposition;
 import net.runelite.api.Point;
 import net.runelite.api.Varbits;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import static net.runelite.client.plugins.pyramidplunder.PyramidPlunderPlugin.GRAND_GOLD_CHEST_CLOSED_ID;
 import static net.runelite.client.plugins.pyramidplunder.PyramidPlunderPlugin.GRAND_GOLD_CHEST_ID;
 import static net.runelite.client.plugins.pyramidplunder.PyramidPlunderPlugin.SARCOPHAGUS_CLOSED_ID;
@@ -50,6 +50,7 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
+import net.runelite.client.util.ColorUtil;
 
 class PyramidPlunderOverlay extends Overlay
 {
@@ -73,7 +74,7 @@ class PyramidPlunderOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		Widget ppWidget = client.getWidget(WidgetInfo.PYRAMID_PLUNDER_DATA);
+		Widget ppWidget = client.getWidget(ComponentID.PYRAMID_PLUNDER_DATA);
 		if (ppWidget == null)
 		{
 			return null;
@@ -84,7 +85,7 @@ class PyramidPlunderOverlay extends Overlay
 		LocalPoint playerLocation = client.getLocalPlayer().getLocalLocation();
 
 		// Highlight convex hulls of urns, chests, and sarcophagus
-		int currentFloor = client.getVar(Varbits.PYRAMID_PLUNDER_ROOM);
+		int currentFloor = client.getVarbitValue(Varbits.PYRAMID_PLUNDER_ROOM);
 		for (GameObject object : plugin.getObjectsToHighlight())
 		{
 			if (config.highlightUrnsFloor() > currentFloor && URN_IDS.contains(object.getId())
@@ -126,7 +127,7 @@ class PyramidPlunderOverlay extends Overlay
 			if (SPEARTRAP_ID == object.getId())
 			{
 				// this varbit is set to 1 when you enter a room and 0 once you get passed the spike traps
-				if (client.getVar(Varbits.PYRAMID_PLUNDER_ROOM_LOCATION) != 1)
+				if (client.getVarbitValue(Varbits.PYRAMID_PLUNDER_ROOM_LOCATION) != 1)
 				{
 					return;
 				}
@@ -157,8 +158,7 @@ class PyramidPlunderOverlay extends Overlay
 				}
 
 				graphics.draw(objectClickbox);
-				graphics.setColor(new Color(highlightColor.getRed(), highlightColor.getGreen(),
-					highlightColor.getBlue(), 50));
+				graphics.setColor(ColorUtil.colorWithAlpha(highlightColor, highlightColor.getAlpha() / 5));
 				graphics.fill(objectClickbox);
 			}
 		});

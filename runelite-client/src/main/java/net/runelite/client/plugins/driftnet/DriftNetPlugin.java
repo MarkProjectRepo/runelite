@@ -97,9 +97,9 @@ public class DriftNetPlugin extends Plugin
 	private DriftNetOverlay overlay;
 
 	@Getter
-	private Set<NPC> fish = new HashSet<>();
+	private final Set<NPC> fish = new HashSet<>();
 	@Getter
-	private Map<NPC, Integer> taggedFish = new HashMap<>();
+	private final Map<NPC, Integer> taggedFish = new HashMap<>();
 	@Getter
 	private final List<DriftNet> NETS = ImmutableList.of(
 		new DriftNet(NullObjectID.NULL_31433, Varbits.NORTH_NET_STATUS, Varbits.NORTH_NET_CATCH_COUNT, ImmutableSet.of(
@@ -198,8 +198,8 @@ public class DriftNetPlugin extends Plugin
 
 		for (DriftNet net : NETS)
 		{
-			DriftNetStatus status = DriftNetStatus.of(client.getVar(net.getStatusVarbit()));
-			int count = client.getVar(net.getCountVarbit());
+			DriftNetStatus status = DriftNetStatus.of(client.getVarbitValue(net.getStatusVarbit()));
+			int count = client.getVarbitValue(net.getCountVarbit());
 
 			net.setStatus(status);
 			net.setCount(count);

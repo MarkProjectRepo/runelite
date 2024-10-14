@@ -23,7 +23,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package net.runelite.client.plugins.grandexchange;
 
 import java.awt.BorderLayout;
@@ -37,6 +36,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -45,7 +46,8 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import net.runelite.api.GrandExchangeOffer;
-import net.runelite.api.GrandExchangeOfferState;
+import static net.runelite.api.GrandExchangeOfferState.BOUGHT;
+import static net.runelite.api.GrandExchangeOfferState.BUYING;
 import static net.runelite.api.GrandExchangeOfferState.CANCELLED_BUY;
 import static net.runelite.api.GrandExchangeOfferState.CANCELLED_SELL;
 import static net.runelite.api.GrandExchangeOfferState.EMPTY;
@@ -59,11 +61,14 @@ import net.runelite.client.util.QuantityFormatter;
 
 public class GrandExchangeOfferSlot extends JPanel
 {
+	private static final int PANEL_HEIGHT = 45;
 	private static final String FACE_CARD = "FACE_CARD";
 	private static final String DETAILS_CARD = "DETAILS_CARD";
 
 	private static final ImageIcon RIGHT_ARROW_ICON;
 	private static final ImageIcon LEFT_ARROW_ICON;
+
+	private final GrandExchangePlugin grandExchangePlugin;
 
 	private final JPanel container = new JPanel();
 	private final CardLayout cardLayout = new CardLayout();
@@ -81,17 +86,19 @@ public class GrandExchangeOfferSlot extends JPanel
 
 	static
 	{
-		final BufferedImage rightArrow = ImageUtil.alphaOffset(ImageUtil.getResourceStreamFromClass(GrandExchangeOfferSlot.class, "/util/arrow_right.png"), 0.25f);
+		final BufferedImage rightArrow = ImageUtil.alphaOffset(ImageUtil.loadImageResource(GrandExchangeOfferSlot.class, "/util/arrow_right.png"), 0.25f);
 		RIGHT_ARROW_ICON = new ImageIcon(rightArrow);
-		LEFT_ARROW_ICON	= new ImageIcon(ImageUtil.flipImage(rightArrow, true, false));
+		LEFT_ARROW_ICON = new ImageIcon(ImageUtil.flipImage(rightArrow, true, false));
 	}
 
 	/**
 	 * This (sub)panel is used for each GE slot displayed
 	 * in the sidebar
 	 */
-	GrandExchangeOfferSlot()
+	GrandExchangeOfferSlot(GrandExchangePlugin grandExchangePlugin)
 	{
+		this.grandExchangePlugin = grandExchangePlugin;
+
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setBorder(new EmptyBorder(7, 0, 0, 0));
@@ -130,7 +137,7 @@ public class GrandExchangeOfferSlot extends JPanel
 
 		itemIcon.setVerticalAlignment(JLabel.CENTER);
 		itemIcon.setHorizontalAlignment(JLabel.CENTER);
-		itemIcon.setPreferredSize(new Dimension(45, 45));
+		itemIcon.setPreferredSize(new Dimension(45, PANEL_HEIGHT));
 
 		itemName.setForeground(Color.WHITE);
 		itemName.setVerticalAlignment(JLabel.BOTTOM);
@@ -144,7 +151,7 @@ public class GrandExchangeOfferSlot extends JPanel
 		switchFaceViewIcon.setIcon(RIGHT_ARROW_ICON);
 		switchFaceViewIcon.setVerticalAlignment(JLabel.CENTER);
 		switchFaceViewIcon.setHorizontalAlignment(JLabel.CENTER);
-		switchFaceViewIcon.setPreferredSize(new Dimension(30, 45));
+		switchFaceViewIcon.setPreferredSize(new Dimension(30, PANEL_HEIGHT));
 
 		JPanel offerFaceDetails = new JPanel();
 		offerFaceDetails.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -175,14 +182,23 @@ public class GrandExchangeOfferSlot extends JPanel
 		switchDetailsViewIcon.setIcon(LEFT_ARROW_ICON);
 		switchDetailsViewIcon.setVerticalAlignment(JLabel.CENTER);
 		switchDetailsViewIcon.setHorizontalAlignment(JLabel.CENTER);
-		switchDetailsViewIcon.setPreferredSize(new Dimension(30, 45));
+		switchDetailsViewIcon.setPreferredSize(new Dimension(30, PANEL_HEIGHT));
 
 		JPanel offerDetails = new JPanel();
 		offerDetails.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		offerDetails.setLayout(new GridLayout(2, 1));
+		offerDetails.setLayout(new BoxLayout(offerDetails, BoxLayout.PAGE_AXIS));
+		offerDetails.setPreferredSize(new Dimension(0, PANEL_HEIGHT));
 
-		offerDetails.add(itemPrice);
-		offerDetails.add(offerSpent);
+		JPanel offerDetailsWrapper = new JPanel();
+		offerDetailsWrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		offerDetailsWrapper.setLayout(new BoxLayout(offerDetailsWrapper, BoxLayout.PAGE_AXIS));
+
+		offerDetailsWrapper.add(itemPrice);
+		offerDetailsWrapper.add(offerSpent);
+
+		offerDetails.add(Box.createVerticalGlue());
+		offerDetails.add(offerDetailsWrapper);
+		offerDetails.add(Box.createVerticalGlue());
 
 		detailsCard.add(offerDetails, BorderLayout.CENTER);
 		detailsCard.add(switchDetailsViewIcon, BorderLayout.EAST);
@@ -206,12 +222,12 @@ public class GrandExchangeOfferSlot extends JPanel
 		{
 			cardLayout.show(container, FACE_CARD);
 
-			itemName.setText(offerItem.getName());
+			itemName.setText(offerItem.getMembersName());
 			itemIcon.setIcon(new ImageIcon(itemImage));
 
-			boolean buying = newOffer.getState() == GrandExchangeOfferState.BOUGHT
-				|| newOffer.getState() == GrandExchangeOfferState.BUYING
-				|| newOffer.getState() == GrandExchangeOfferState.CANCELLED_BUY;
+			boolean buying = newOffer.getState() == BOUGHT
+				|| newOffer.getState() == BUYING
+				|| newOffer.getState() == CANCELLED_BUY;
 
 			String offerState = (buying ? "Bought " : "Sold ")
 				+ QuantityFormatter.quantityToRSDecimalStack(newOffer.getQuantitySold()) + " / "
@@ -234,7 +250,7 @@ public class GrandExchangeOfferSlot extends JPanel
 			popupMenu.setBorder(new EmptyBorder(5, 5, 5, 5));
 
 			final JMenuItem openGeLink = new JMenuItem("Open Grand Exchange website");
-			openGeLink.addActionListener(e -> GrandExchangePlugin.openGeLink(offerItem.getName(), offerItem.getId()));
+			openGeLink.addActionListener(e -> grandExchangePlugin.openGeLink(offerItem.getMembersName(), offerItem.getId()));
 			popupMenu.add(openGeLink);
 
 			/* Couldn't set the tooltip for the container panel as the children override it, so I'm setting
@@ -251,7 +267,6 @@ public class GrandExchangeOfferSlot extends JPanel
 		}
 
 		revalidate();
-		repaint();
 	}
 
 	private String htmlTooltip(String value)

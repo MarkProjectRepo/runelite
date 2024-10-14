@@ -27,6 +27,7 @@ package net.runelite.client.plugins.motherlode;
 import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
+import java.util.Arrays;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -39,14 +40,18 @@ import net.runelite.api.Varbits;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.game.ItemStack;
+import net.runelite.client.plugins.loottracker.PluginLootReceived;
 import net.runelite.client.ui.overlay.OverlayManager;
+import static org.junit.Assert.assertEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -62,27 +67,11 @@ public class MotherlodePluginTest
 
 	@Mock
 	@Bind
-	MotherlodeSession motherlodeSession;
-
-	@Mock
-	@Bind
 	private MotherlodeConfig motherlodeConfig;
 
 	@Mock
 	@Bind
-	private MotherlodeGemOverlay motherlodeGemOverlay;
-
-	@Mock
-	@Bind
-	private MotherlodeOreOverlay motherlodeOreOverlay;
-
-	@Mock
-	@Bind
-	private MotherlodeRocksOverlay motherlodeRocksOverlay;
-
-	@Mock
-	@Bind
-	private MotherlodeSackOverlay motherlodeSackOverlay;
+	private MotherlodeSceneOverlay motherlodeSceneOverlay;
 
 	@Mock
 	@Bind
@@ -91,6 +80,10 @@ public class MotherlodePluginTest
 	@Mock
 	@Bind
 	private OverlayManager overlayManager;
+
+	@Mock
+	@Bind
+	private EventBus eventBus;
 
 	@Before
 	public void before()
@@ -110,7 +103,7 @@ public class MotherlodePluginTest
 		motherlodePlugin.onGameStateChanged(gameStateChanged);
 
 		// Initial sack count
-		when(client.getVar(Varbits.SACK_NUMBER)).thenReturn(42);
+		when(client.getVarbitValue(Varbits.SACK_NUMBER)).thenReturn(42);
 		motherlodePlugin.onVarbitChanged(new VarbitChanged());
 
 		// Create before inventory
@@ -129,7 +122,7 @@ public class MotherlodePluginTest
 		when(client.getItemContainer(InventoryID.INVENTORY)).thenReturn(inventory);
 
 		// Withdraw 20
-		when(client.getVar(Varbits.SACK_NUMBER)).thenReturn(22);
+		when(client.getVarbitValue(Varbits.SACK_NUMBER)).thenReturn(22);
 		motherlodePlugin.onVarbitChanged(new VarbitChanged());
 
 		inventory = mock(ItemContainer.class);
@@ -149,16 +142,20 @@ public class MotherlodePluginTest
 		};
 		when(inventory.getItems())
 			.thenReturn(items);
-		when(client.getItemContainer(InventoryID.INVENTORY)).thenReturn(inventory);
 
 		// Trigger comparison
+		when(motherlodeConfig.trackOresFound()).thenReturn(true);
 		motherlodePlugin.onItemContainerChanged(new ItemContainerChanged(InventoryID.INVENTORY.getId(), inventory));
 
-		verify(motherlodeSession).updateOreFound(ItemID.RUNITE_ORE, 1);
-		verify(motherlodeSession).updateOreFound(ItemID.GOLDEN_NUGGET, 4);
-		verify(motherlodeSession).updateOreFound(ItemID.COAL, 2);
-		verify(motherlodeSession).updateOreFound(ItemID.ADAMANTITE_ORE, 1);
-		verifyNoMoreInteractions(motherlodeSession);
+		ArgumentCaptor<PluginLootReceived> captor = ArgumentCaptor.forClass(PluginLootReceived.class);
+		verify(eventBus).post(captor.capture());
+		PluginLootReceived event = captor.getValue();
+		assertEquals(Arrays.asList(
+			new ItemStack(ItemID.ADAMANTITE_ORE, 1),
+			new ItemStack(ItemID.RUNITE_ORE, 1),
+			new ItemStack(ItemID.COAL, 2),
+			new ItemStack(ItemID.GOLDEN_NUGGET, 4)
+		), event.getItems());
 	}
 
 	private static Item item(int itemId, int quantity)

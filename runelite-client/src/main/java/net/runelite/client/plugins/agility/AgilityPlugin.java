@@ -36,29 +36,26 @@ import java.util.Set;
 import javax.inject.Inject;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ItemID;
 import static net.runelite.api.ItemID.AGILITY_ARENA_TICKET;
-import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NullNpcID;
 import net.runelite.api.Player;
-import net.runelite.api.Skill;
 import static net.runelite.api.Skill.AGILITY;
 import net.runelite.api.Tile;
 import net.runelite.api.TileItem;
 import net.runelite.api.TileObject;
+import net.runelite.api.Varbits;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.DecorativeObjectChanged;
 import net.runelite.api.events.DecorativeObjectDespawned;
 import net.runelite.api.events.DecorativeObjectSpawned;
-import net.runelite.api.events.GameObjectChanged;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.GroundObjectChanged;
 import net.runelite.api.events.GroundObjectDespawned;
 import net.runelite.api.events.GroundObjectSpawned;
 import net.runelite.api.events.ItemDespawned;
@@ -66,14 +63,13 @@ import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.WallObjectChanged;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WallObjectDespawned;
 import net.runelite.api.events.WallObjectSpawned;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.game.AgilityShortcut;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -82,7 +78,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.xptracker.XpTrackerPlugin;
 import net.runelite.client.plugins.xptracker.XpTrackerService;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 
 @PluginDescriptor(
@@ -137,6 +132,7 @@ public class AgilityPlugin extends Plugin
 	private XpTrackerService xpTrackerService;
 
 	@Getter
+	@Setter(AccessLevel.PACKAGE)
 	private AgilitySession session;
 
 	private int lastAgilityXp;
@@ -159,7 +155,7 @@ public class AgilityPlugin extends Plugin
 	{
 		overlayManager.add(agilityOverlay);
 		overlayManager.add(lapCounterOverlay);
-		agilityLevel = client.getBoostedSkillLevel(Skill.AGILITY);
+		agilityLevel = client.getBoostedSkillLevel(AGILITY);
 	}
 
 	@Override
@@ -173,18 +169,6 @@ public class AgilityPlugin extends Plugin
 		agilityLevel = 0;
 		stickTile = null;
 		npcs.clear();
-	}
-
-	@Subscribe
-	public void onOverlayMenuClicked(OverlayMenuClicked overlayMenuClicked)
-	{
-		OverlayMenuEntry overlayMenuEntry = overlayMenuClicked.getEntry();
-		if (overlayMenuEntry.getMenuAction() == MenuAction.RUNELITE_OVERLAY
-			&& overlayMenuClicked.getOverlay() == lapCounterOverlay
-			&& overlayMenuClicked.getEntry().getOption().equals(LapCounterOverlay.AGILITY_RESET))
-		{
-			session = null;
-		}
 	}
 
 	@Subscribe
@@ -224,6 +208,19 @@ public class AgilityPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (event.getVarbitId() == Varbits.COLOSSAL_WYRM_COURSE_ADVANCED && event.getValue() == 6)
+		{
+			trackSession(Courses.COLOSSAL_WYRM_ADVANCED);
+		}
+		else if (event.getVarbitId() == Varbits.COLOSSAL_WYRM_COURSE_BASIC && event.getValue() == 6)
+		{
+			trackSession(Courses.COLOSSAL_WYRM_BASIC);
+		}
+	}
+
+	@Subscribe
 	public void onStatChanged(StatChanged statChanged)
 	{
 		if (statChanged.getSkill() != AGILITY)
@@ -233,37 +230,23 @@ public class AgilityPlugin extends Plugin
 
 		agilityLevel = statChanged.getBoostedLevel();
 
-		if (!config.showLapCount())
-		{
-			return;
-		}
-
 		// Determine how much EXP was actually gained
-		int agilityXp = client.getSkillExperience(AGILITY);
+		int agilityXp = statChanged.getXp();
 		int skillGained = agilityXp - lastAgilityXp;
 		lastAgilityXp = agilityXp;
+
+		log.debug("Gained {} xp at {}", skillGained, client.getLocalPlayer().getWorldLocation());
 
 		// Get course
 		Courses course = Courses.getCourse(client.getLocalPlayer().getWorldLocation().getRegionID());
 		if (course == null
-			|| (course.getCourseEndWorldPoints().length == 0
-			? Math.abs(course.getLastObstacleXp() - skillGained) > 1
-			: Arrays.stream(course.getCourseEndWorldPoints()).noneMatch(wp -> wp.equals(client.getLocalPlayer().getWorldLocation()))))
+			|| !config.showLapCount()
+			|| Arrays.stream(course.getCourseEndWorldPoints()).noneMatch(wp -> wp.equals(client.getLocalPlayer().getWorldLocation())))
 		{
 			return;
 		}
 
-		if (session != null && session.getCourse() == course)
-		{
-			session.incrementLapCount(client, xpTrackerService);
-		}
-		else
-		{
-			session = new AgilitySession(course);
-			// New course found, reset lap count and set new course
-			session.resetLapCount();
-			session.incrementLapCount(client, xpTrackerService);
-		}
+		trackSession(course);
 	}
 
 	@Subscribe
@@ -318,10 +301,7 @@ public class AgilityPlugin extends Plugin
 			{
 				log.debug("Ticked position moved from {} to {}", oldTickPosition, newTicketPosition);
 
-				if (config.notifyAgilityArena())
-				{
-					notifier.notify("Ticket location changed");
-				}
+				notifier.notify(config.notifyAgilityArena(), "Ticket location changed");
 
 				if (config.showAgilityArenaTimer())
 				{
@@ -329,6 +309,17 @@ public class AgilityPlugin extends Plugin
 				}
 			}
 		}
+	}
+
+	private void trackSession(Courses course)
+	{
+		if (session == null || session.getCourse() != course)
+		{
+			session = new AgilitySession(course);
+			log.debug("Started new agility session for course: {}", course);
+		}
+
+		session.incrementLapCount(client, xpTrackerService);
 	}
 
 	private boolean isInAgilityArena()
@@ -361,12 +352,6 @@ public class AgilityPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onGameObjectChanged(GameObjectChanged event)
-	{
-		onTileObject(event.getTile(), event.getPrevious(), event.getGameObject());
-	}
-
-	@Subscribe
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		onTileObject(event.getTile(), event.getGameObject(), null);
@@ -376,12 +361,6 @@ public class AgilityPlugin extends Plugin
 	public void onGroundObjectSpawned(GroundObjectSpawned event)
 	{
 		onTileObject(event.getTile(), null, event.getGroundObject());
-	}
-
-	@Subscribe
-	public void onGroundObjectChanged(GroundObjectChanged event)
-	{
-		onTileObject(event.getTile(), event.getPrevious(), event.getGroundObject());
 	}
 
 	@Subscribe
@@ -397,12 +376,6 @@ public class AgilityPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onWallObjectChanged(WallObjectChanged event)
-	{
-		onTileObject(event.getTile(), event.getPrevious(), event.getWallObject());
-	}
-
-	@Subscribe
 	public void onWallObjectDespawned(WallObjectDespawned event)
 	{
 		onTileObject(event.getTile(), event.getWallObject(), null);
@@ -412,12 +385,6 @@ public class AgilityPlugin extends Plugin
 	public void onDecorativeObjectSpawned(DecorativeObjectSpawned event)
 	{
 		onTileObject(event.getTile(), null, event.getDecorativeObject());
-	}
-
-	@Subscribe
-	public void onDecorativeObjectChanged(DecorativeObjectChanged event)
-	{
-		onTileObject(event.getTile(), event.getPrevious(), event.getDecorativeObject());
 	}
 
 	@Subscribe
@@ -435,7 +402,7 @@ public class AgilityPlugin extends Plugin
 			return;
 		}
 
-		if (Obstacles.COURSE_OBSTACLE_IDS.contains(newObject.getId()) ||
+		if (Obstacles.OBSTACLE_IDS.contains(newObject.getId()) ||
 			Obstacles.PORTAL_OBSTACLE_IDS.contains(newObject.getId()) ||
 			(Obstacles.TRAP_OBSTACLE_IDS.contains(newObject.getId())
 				&& Obstacles.TRAP_OBSTACLE_REGIONS.contains(newObject.getWorldLocation().getRegionID())) ||
@@ -453,6 +420,11 @@ public class AgilityPlugin extends Plugin
 			// Find the closest shortcut to this object
 			for (AgilityShortcut shortcut : Obstacles.SHORTCUT_OBSTACLE_IDS.get(newObject.getId()))
 			{
+				if (!shortcut.matches(client, newObject))
+				{
+					continue;
+				}
+
 				if (shortcut.getWorldLocation() == null)
 				{
 					closestShortcut = shortcut;

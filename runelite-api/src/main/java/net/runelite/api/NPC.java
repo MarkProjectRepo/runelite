@@ -69,10 +69,9 @@ public interface NPC extends Actor
 	@Nullable
 	NPCComposition getTransformedComposition();
 
-	/**
-	 * Returns true if this NPC has died
-	 *
-	 * @return
-	 */
-	boolean isDead();
+	@Nullable
+	NpcOverrides getModelOverrides();
+
+	@Nullable
+	NpcOverrides getChatheadOverrides();
 }

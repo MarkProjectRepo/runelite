@@ -130,7 +130,7 @@ public class Text
 	 */
 	public static String toJagexName(String str)
 	{
-		return CharMatcher.ascii().retainFrom(str.replace('\u00A0', ' ')).replaceAll("[_-]+", " ").trim();
+		return CharMatcher.ascii().retainFrom(str.replaceAll("[\u00A0_-]", " ")).trim();
 	}
 
 	/**
@@ -143,8 +143,8 @@ public class Text
 	public static String sanitizeMultilineText(String str)
 	{
 		return removeTags(str
-			.replaceAll("-<br>", "-")
-			.replaceAll("<br>", " ")
+			.replace("-<br>", "-")
+			.replace("<br>", " ")
 			.replaceAll("[ ]+", " "));
 	}
 
@@ -221,7 +221,7 @@ public class Text
 	 *
 	 * @return true if all search terms matches at least one keyword, or false if otherwise.
 	 */
-	public static boolean matchesSearchTerms(String[] searchTerms, final Collection<String> keywords)
+	public static boolean matchesSearchTerms(Iterable<String> searchTerms, final Collection<String> keywords)
 	{
 		for (String term : searchTerms)
 		{

@@ -31,12 +31,11 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
 import com.google.inject.Provides;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -45,60 +44,58 @@ import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
-import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
-import net.runelite.api.MenuAction;
-import static net.runelite.api.ObjectID.ORE_VEIN_26661;
+import static net.runelite.api.ObjectID.BROKEN_STRUT;
+import static net.runelite.api.ObjectID.ORE_VEIN;
 import static net.runelite.api.ObjectID.ORE_VEIN_26662;
 import static net.runelite.api.ObjectID.ORE_VEIN_26663;
 import static net.runelite.api.ObjectID.ORE_VEIN_26664;
 import static net.runelite.api.ObjectID.ROCKFALL;
 import static net.runelite.api.ObjectID.ROCKFALL_26680;
 import net.runelite.api.Perspective;
+import net.runelite.api.ScriptID;
 import net.runelite.api.Varbits;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameObjectChanged;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.WallObjectChanged;
 import net.runelite.api.events.WallObjectDespawned;
 import net.runelite.api.events.WallObjectSpawned;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.task.Schedule;
+import net.runelite.client.plugins.loottracker.PluginLootReceived;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.OverlayMenuEntry;
+import net.runelite.http.api.loottracker.LootRecordType;
 
 @PluginDescriptor(
 	name = "Motherlode Mine",
-	description = "Show helpful information inside the Motherload Mine",
+	description = "Show helpful information inside the Motherlode Mine",
 	tags = {"pay", "dirt", "mining", "mlm", "skilling", "overlay"},
 	enabledByDefault = false
 )
 public class MotherlodePlugin extends Plugin
 {
 	private static final Set<Integer> MOTHERLODE_MAP_REGIONS = ImmutableSet.of(14679, 14680, 14681, 14935, 14936, 14937, 15191, 15192, 15193);
-	private static final Set<Integer> MINE_SPOTS = ImmutableSet.of(ORE_VEIN_26661, ORE_VEIN_26662, ORE_VEIN_26663, ORE_VEIN_26664);
+	private static final Set<Integer> MINE_SPOTS = ImmutableSet.of(ORE_VEIN, ORE_VEIN_26662, ORE_VEIN_26663, ORE_VEIN_26664);
 	private static final Set<Integer> MLM_ORE_TYPES = ImmutableSet.of(ItemID.RUNITE_ORE, ItemID.ADAMANTITE_ORE,
 		ItemID.MITHRIL_ORE, ItemID.GOLD_ORE, ItemID.COAL, ItemID.GOLDEN_NUGGET);
 	private static final Set<Integer> ROCK_OBSTACLES = ImmutableSet.of(ROCKFALL, ROCKFALL_26680);
 
-	private static final int MAX_INVENTORY_SIZE = 28;
-
-	private static final int SACK_LARGE_SIZE = 162;
-	private static final int SACK_SIZE = 81;
+	private static final int SACK_LARGE_SIZE = 189;
+	private static final int SACK_SIZE = 108;
 
 	private static final int UPPER_FLOOR_HEIGHT = -490;
 
@@ -106,19 +103,7 @@ public class MotherlodePlugin extends Plugin
 	private OverlayManager overlayManager;
 
 	@Inject
-	private MotherlodeOverlay overlay;
-
-	@Inject
-	private MotherlodeRocksOverlay rocksOverlay;
-
-	@Inject
-	private MotherlodeSackOverlay motherlodeSackOverlay;
-
-	@Inject
-	private MotherlodeGemOverlay motherlodeGemOverlay;
-
-	@Inject
-	private MotherlodeOreOverlay motherlodeOreOverlay;
+	private MotherlodeSceneOverlay sceneOverlay;
 
 	@Inject
 	private MotherlodeConfig config;
@@ -129,18 +114,14 @@ public class MotherlodePlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
+	@Inject
+	private EventBus eventBus;
+
 	@Getter(AccessLevel.PACKAGE)
 	private boolean inMlm;
 
-	@Getter(AccessLevel.PACKAGE)
 	private int curSackSize;
-	@Getter(AccessLevel.PACKAGE)
-	private int maxSackSize;
-	@Getter(AccessLevel.PACKAGE)
-	private Integer depositsLeft;
 
-	@Inject
-	private MotherlodeSession session;
 	private boolean shouldUpdateOres;
 	private Multiset<Integer> inventorySnapshot;
 
@@ -148,6 +129,8 @@ public class MotherlodePlugin extends Plugin
 	private final Set<WallObject> veins = new HashSet<>();
 	@Getter(AccessLevel.PACKAGE)
 	private final Set<GameObject> rocks = new HashSet<>();
+	@Getter(AccessLevel.PACKAGE)
+	private final Set<GameObject> brokenStruts = new HashSet<>();
 
 	@Provides
 	MotherlodeConfig getConfig(ConfigManager configManager)
@@ -158,11 +141,7 @@ public class MotherlodePlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		overlayManager.add(overlay);
-		overlayManager.add(rocksOverlay);
-		overlayManager.add(motherlodeGemOverlay);
-		overlayManager.add(motherlodeOreOverlay);
-		overlayManager.add(motherlodeSackOverlay);
+		overlayManager.add(sceneOverlay);
 
 		inMlm = checkInMlm();
 
@@ -175,35 +154,10 @@ public class MotherlodePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		overlayManager.remove(overlay);
-		overlayManager.remove(rocksOverlay);
-		overlayManager.remove(motherlodeGemOverlay);
-		overlayManager.remove(motherlodeOreOverlay);
-		overlayManager.remove(motherlodeSackOverlay);
+		overlayManager.remove(sceneOverlay);
 		veins.clear();
 		rocks.clear();
-
-		Widget sack = client.getWidget(WidgetInfo.MOTHERLODE_MINE);
-
-		clientThread.invokeLater(() ->
-		{
-			if (sack != null && sack.isHidden())
-			{
-				sack.setHidden(false);
-			}
-		});
-	}
-
-	@Subscribe
-	public void onOverlayMenuClicked(OverlayMenuClicked overlayMenuClicked)
-	{
-		OverlayMenuEntry overlayMenuEntry = overlayMenuClicked.getEntry();
-		if (overlayMenuEntry.getMenuAction() == MenuAction.RUNELITE_OVERLAY
-			&& overlayMenuClicked.getEntry().getOption().equals(MotherlodeOverlay.MINING_RESET)
-			&& overlayMenuClicked.getOverlay() == overlay)
-		{
-			session.resetRecent();
-		}
+		brokenStruts.clear();
 	}
 
 	@Subscribe
@@ -241,54 +195,84 @@ public class MotherlodePlugin extends Plugin
 
 		switch (chatMessage)
 		{
-			case "You manage to mine some pay-dirt.":
-				session.incrementPayDirtMined();
-				break;
 
 			case "You just found a Diamond!":
-				session.incrementGemFound(ItemID.UNCUT_DIAMOND);
+				if (config.trackGemsFound())
+				{
+					broadcastLootItem(ItemID.UNCUT_DIAMOND);
+				}
 				break;
 
 			case "You just found a Ruby!":
-				session.incrementGemFound(ItemID.UNCUT_RUBY);
+				if (config.trackGemsFound())
+				{
+					broadcastLootItem(ItemID.UNCUT_RUBY);
+				}
 				break;
 
 			case "You just found an Emerald!":
-				session.incrementGemFound(ItemID.UNCUT_EMERALD);
+				if (config.trackGemsFound())
+				{
+					broadcastLootItem(ItemID.UNCUT_EMERALD);
+				}
 				break;
 
 			case "You just found a Sapphire!":
-				session.incrementGemFound(ItemID.UNCUT_SAPPHIRE);
+				if (config.trackGemsFound())
+				{
+					broadcastLootItem(ItemID.UNCUT_SAPPHIRE);
+				}
 				break;
 		}
 	}
 
-	@Schedule(
-		period = 1,
-		unit = ChronoUnit.SECONDS
-	)
-	public void checkMining()
+	private void broadcastLootItem(int itemId)
 	{
-		if (!inMlm)
+		var lootEvent = PluginLootReceived.builder()
+			.source(this)
+			.name("Motherlode Mine")
+			.type(LootRecordType.EVENT)
+			.items(Collections.singleton(new ItemStack(itemId, 1, client.getLocalPlayer().getLocalLocation())))
+			.build();
+		eventBus.post(lootEvent);
+	}
+
+	@Subscribe
+	private void onScriptPostFired(ScriptPostFired event)
+	{
+		if (event.getScriptId() == ScriptID.MOTHERLODE_HUD_UPDATE)
+		{
+			recolorSackOverlay();
+		}
+	}
+
+	private void recolorSackOverlay()
+	{
+		ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+		if (inv == null)
 		{
 			return;
 		}
 
-		depositsLeft = calculateDepositsLeft();
+		int sackSize = client.getVarbitValue(Varbits.SACK_NUMBER);
+		boolean sackUpgraded = client.getVarbitValue(Varbits.SACK_UPGRADED) == 1;
+		int sackCapacity = sackUpgraded ? SACK_LARGE_SIZE : SACK_SIZE;
+		int payDir = inv.count(ItemID.PAYDIRT);
 
-		Instant lastPayDirtMined = session.getLastPayDirtMined();
-		if (lastPayDirtMined == null)
+		Widget sackSizeWidget = client.getWidget(ComponentID.MLM_SACK_SIZE_TEXT);
+		Widget spaceTextWidget = client.getWidget(ComponentID.MLM_SPACE_TEXT);
+		if (sackSizeWidget != null && spaceTextWidget != null)
 		{
-			return;
-		}
-
-		// reset recentPayDirtMined if you haven't mined anything recently
-		Duration statTimeout = Duration.ofMinutes(config.statTimeout());
-		Duration sinceMined = Duration.between(lastPayDirtMined, Instant.now());
-
-		if (sinceMined.compareTo(statTimeout) >= 0)
-		{
-			session.resetRecent();
+			if (payDir >= sackCapacity - sackSize)
+			{
+				sackSizeWidget.setTextColor(0xff0000);
+				spaceTextWidget.setTextColor(0xff0000);
+			}
+			else
+			{
+				sackSizeWidget.setTextColor(0xc8c8c8);
+				spaceTextWidget.setTextColor(0xffffff);
+			}
 		}
 	}
 
@@ -301,24 +285,6 @@ public class MotherlodePlugin extends Plugin
 		}
 
 		WallObject wallObject = event.getWallObject();
-		if (MINE_SPOTS.contains(wallObject.getId()))
-		{
-			veins.add(wallObject);
-		}
-	}
-
-	@Subscribe
-	public void onWallObjectChanged(WallObjectChanged event)
-	{
-		if (!inMlm)
-		{
-			return;
-		}
-
-		WallObject previous = event.getPrevious();
-		WallObject wallObject = event.getWallObject();
-
-		veins.remove(previous);
 		if (MINE_SPOTS.contains(wallObject.getId()))
 		{
 			veins.add(wallObject);
@@ -345,30 +311,7 @@ public class MotherlodePlugin extends Plugin
 			return;
 		}
 
-		GameObject gameObject = event.getGameObject();
-		if (ROCK_OBSTACLES.contains(gameObject.getId()))
-		{
-			rocks.add(gameObject);
-		}
-	}
-
-	@Subscribe
-	public void onGameObjectChanged(GameObjectChanged event)
-	{
-		if (!inMlm)
-		{
-			return;
-		}
-
-		GameObject previous = event.getPrevious();
-		GameObject gameObject = event.getGameObject();
-
-		rocks.remove(previous);
-		if (ROCK_OBSTACLES.contains(gameObject.getId()))
-		{
-			rocks.add(gameObject);
-		}
-
+		addGameObject(event.getGameObject());
 	}
 
 	@Subscribe
@@ -379,8 +322,7 @@ public class MotherlodePlugin extends Plugin
 			return;
 		}
 
-		GameObject gameObject = event.getGameObject();
-		rocks.remove(gameObject);
+		removeGameObject(event.getGameObject());
 	}
 
 	@Subscribe
@@ -391,6 +333,7 @@ public class MotherlodePlugin extends Plugin
 			// on region changes the tiles get set to null
 			veins.clear();
 			rocks.clear();
+			brokenStruts.clear();
 
 			inMlm = checkInMlm();
 		}
@@ -404,12 +347,19 @@ public class MotherlodePlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		final ItemContainer container = event.getItemContainer();
-
-		if (!inMlm || !shouldUpdateOres || inventorySnapshot == null || container != client.getItemContainer(InventoryID.INVENTORY))
+		if (!inMlm)
 		{
 			return;
 		}
+
+		recolorSackOverlay();
+
+		if (!shouldUpdateOres || inventorySnapshot == null || event.getContainerId() != InventoryID.INVENTORY.getId())
+		{
+			return;
+		}
+
+		final ItemContainer container = event.getItemContainer();
 
 		// Build set of current inventory
 		Multiset<Integer> current = HashMultiset.create();
@@ -420,56 +370,22 @@ public class MotherlodePlugin extends Plugin
 		// Take the difference
 		Multiset<Integer> delta = Multisets.difference(current, inventorySnapshot);
 
-		// Update the session
-		delta.forEachEntry(session::updateOreFound);
+		// Advertise the loot
+		var lootEvent = PluginLootReceived.builder()
+			.source(this)
+			.name("Motherlode Mine")
+			.type(LootRecordType.EVENT)
+			.items(delta.entrySet().stream()
+				.map(e -> new ItemStack(e.getElement(), e.getCount()))
+				.collect(Collectors.toList()))
+			.build();
+		if (config.trackOresFound())
+		{
+			eventBus.post(lootEvent);
+		}
+
 		inventorySnapshot = null;
 		shouldUpdateOres = false;
-	}
-
-	private Integer calculateDepositsLeft()
-	{
-		if (maxSackSize == 0) // check if maxSackSize has been initialized
-		{
-			refreshSackValues();
-		}
-
-		double depositsLeft = 0;
-		int nonPayDirtItems = 0;
-
-		ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
-		if (inventory == null)
-		{
-			return null;
-		}
-
-		Item[] result = inventory.getItems();
-		assert result != null;
-
-		for (Item item : result)
-		{
-			// Assume that MLM ores are being banked and exclude them from the check,
-			// so the user doesn't see the Overlay switch between deposits left and N/A.
-			//
-			// Count other items at nonPayDirtItems so depositsLeft is calculated accordingly.
-			if (item.getId() != ItemID.PAYDIRT && item.getId() != -1 && !MLM_ORE_TYPES.contains(item.getId()))
-			{
-				nonPayDirtItems += 1;
-			}
-		}
-
-		double inventorySpace = MAX_INVENTORY_SIZE - nonPayDirtItems;
-		double sackSizeRemaining = maxSackSize - curSackSize;
-
-		if (inventorySpace > 0 && sackSizeRemaining > 0)
-		{
-			depositsLeft = Math.ceil(sackSizeRemaining / inventorySpace);
-		}
-		else if (inventorySpace == 0)
-		{
-			return null;
-		}
-
-		return (int) depositsLeft;
 	}
 
 	private boolean checkInMlm()
@@ -497,9 +413,7 @@ public class MotherlodePlugin extends Plugin
 
 	private void refreshSackValues()
 	{
-		curSackSize = client.getVar(Varbits.SACK_NUMBER);
-		boolean sackUpgraded = client.getVar(Varbits.SACK_UPGRADED) == 1;
-		maxSackSize = sackUpgraded ? SACK_LARGE_SIZE : SACK_SIZE;
+		curSackSize = client.getVarbitValue(Varbits.SACK_NUMBER);
 	}
 
 	/**
@@ -512,5 +426,24 @@ public class MotherlodePlugin extends Plugin
 	boolean isUpstairs(LocalPoint localPoint)
 	{
 		return Perspective.getTileHeight(client, localPoint, 0) < UPPER_FLOOR_HEIGHT;
+	}
+
+	private void addGameObject(GameObject gameObject)
+	{
+		if (ROCK_OBSTACLES.contains(gameObject.getId()))
+		{
+			rocks.add(gameObject);
+		}
+
+		if (BROKEN_STRUT == gameObject.getId())
+		{
+			brokenStruts.add(gameObject);
+		}
+	}
+
+	private void removeGameObject(GameObject gameObject)
+	{
+		rocks.remove(gameObject);
+		brokenStruts.remove(gameObject);
 	}
 }

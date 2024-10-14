@@ -42,6 +42,7 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Notification;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -76,7 +77,8 @@ public class RandomEventPlugin extends Plugin
 		NpcID.QUIZ_MASTER_6755,
 		NpcID.RICK_TURPENTINE, NpcID.RICK_TURPENTINE_376,
 		NpcID.SANDWICH_LADY,
-		NpcID.SERGEANT_DAMIEN_6743
+		NpcID.SERGEANT_DAMIEN_6743,
+		NpcID.COUNT_CHECK_12551, NpcID.COUNT_CHECK_12552
 	);
 	private static final Set<String> EVENT_OPTIONS = ImmutableSet.of(
 		"Talk-to",
@@ -135,10 +137,7 @@ public class RandomEventPlugin extends Plugin
 		{
 			lastNotificationTick = client.getTickCount();
 
-			if (shouldNotify(currentRandomEvent.getId()))
-			{
-				notifier.notify("Random event spawned: " + currentRandomEvent.getName());
-			}
+			notifier.notify(shouldNotify(currentRandomEvent.getId()), "Random event spawned: " + currentRandomEvent.getName());
 		}
 	}
 
@@ -160,7 +159,7 @@ public class RandomEventPlugin extends Plugin
 			&& event.getType() <= MenuAction.NPC_FIFTH_OPTION.getId()
 			&& EVENT_OPTIONS.contains(event.getOption()))
 		{
-			NPC npc = client.getCachedNPCs()[event.getIdentifier()];
+			NPC npc = event.getMenuEntry().getNpc();
 			if (npc != null && EVENT_NPCS.contains(npc.getId()) && npc != currentRandomEvent && config.removeMenuOptions())
 			{
 				client.setMenuEntries(Arrays.copyOf(client.getMenuEntries(), client.getMenuEntries().length - 1));
@@ -168,47 +167,97 @@ public class RandomEventPlugin extends Plugin
 		}
 	}
 
-	private boolean shouldNotify(int id)
+	private Notification shouldNotify(int id)
 	{
-		if (config.notifyAllEvents())
-		{
-			return true;
-		}
-
+		Notification notification = null;
 		switch (id)
 		{
 			case NpcID.BEE_KEEPER_6747:
-				return config.notifyBeekeeper();
+				notification = config.notifyBeekeeper();
+				break;
+			case NpcID.CAPT_ARNAV:
+				notification = config.notifyArnav();
+				break;
+			case NpcID.DRUNKEN_DWARF:
+				notification = config.notifyDwarf();
+				break;
 			case NpcID.SERGEANT_DAMIEN_6743:
-				return config.notifyDemon();
+				notification = config.notifyDemon();
+				break;
 			case NpcID.FREAKY_FORESTER_6748:
-				return config.notifyForester();
+				notification = config.notifyForester();
+				break;
 			case NpcID.FROG_5429:
-				return config.notifyFrog();
+				notification = config.notifyFrog();
+				break;
 			case NpcID.GENIE:
 			case NpcID.GENIE_327:
-				return config.notifyGenie();
+				notification = config.notifyGenie();
+				break;
+			case NpcID.GILES:
+			case NpcID.GILES_5441:
+			case NpcID.NILES:
+			case NpcID.NILES_5439:
+			case NpcID.MILES:
+			case NpcID.MILES_5440:
+				notification = config.notifyCerters();
+				break;
 			case NpcID.DR_JEKYLL:
 			case NpcID.DR_JEKYLL_314:
-				return config.notifyJekyll();
+				notification = config.notifyJekyll();
+				break;
 			case NpcID.EVIL_BOB:
+				notification = config.notifyBob();
+				break;
 			case NpcID.EVIL_BOB_6754:
-				return config.notifyBob();
+				notification = config.notifyPrison();
+				break;
 			case NpcID.LEO_6746:
-				return config.notifyGravedigger();
+				notification = config.notifyGravedigger();
+				break;
 			case NpcID.MYSTERIOUS_OLD_MAN_6750:
 			case NpcID.MYSTERIOUS_OLD_MAN_6751:
+				notification = config.notifyMoM();
+				break;
 			case NpcID.MYSTERIOUS_OLD_MAN_6752:
+				notification = config.notifyMaze();
+				break;
 			case NpcID.MYSTERIOUS_OLD_MAN_6753:
-				return config.notifyMoM();
+				notification = config.notifyMime();
+				break;
+			case NpcID.PILLORY_GUARD:
+				notification = config.notifyPillory();
+				break;
+			case NpcID.POSTIE_PETE_6738:
+				notification = config.notifyTwin();
+				break;
 			case NpcID.QUIZ_MASTER_6755:
-				return config.notifyQuiz();
+				notification = config.notifyQuiz();
+				break;
+			case NpcID.RICK_TURPENTINE:
+			case NpcID.RICK_TURPENTINE_376:
+				notification = config.notifyTurpentine();
+				break;
 			case NpcID.DUNCE_6749:
-				return config.notifyDunce();
+				notification = config.notifyDunce();
+				break;
 			case NpcID.SANDWICH_LADY:
-				return config.notifySandwich();
-			default:
-				return false;
+				notification = config.notifySandwich();
+				break;
+			case NpcID.FLIPPA_6744:
+				notification = config.notifyFlippa();
+				break;
+			case NpcID.COUNT_CHECK_12551:
+			case NpcID.COUNT_CHECK_12552:
+				notification = config.notifyCountCheck();
+				break;
 		}
+
+		if (notification != null && notification.isEnabled())
+		{
+			return notification;
+		}
+
+		return config.notifyAllEvents();
 	}
 }

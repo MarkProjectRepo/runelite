@@ -27,20 +27,24 @@ package net.runelite.client.plugins.idlenotifier;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Notification;
+import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
 
-@ConfigGroup("idlenotifier")
+@ConfigGroup(IdleNotifierConfig.GROUP)
 public interface IdleNotifierConfig extends Config
 {
+	String GROUP = "idlenotifier";
+
 	@ConfigItem(
 		keyName = "animationidle",
 		name = "Idle Animation Notifications",
 		description = "Configures if idle animation notifications are enabled",
 		position = 1
 	)
-	default boolean animationIdle()
+	default Notification animationIdle()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
@@ -49,9 +53,9 @@ public interface IdleNotifierConfig extends Config
 		description = "Configures if idle interaction notifications are enabled e.g. combat, fishing",
 		position = 2
 	)
-	default boolean interactionIdle()
+	default Notification interactionIdle()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
@@ -60,9 +64,9 @@ public interface IdleNotifierConfig extends Config
 		description = "Configures if idle movement notifications are enabled e.g. running, walking",
 		position = 3
 	)
-	default boolean movementIdle()
+	default Notification movementIdle()
 	{
-		return false;
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
@@ -71,9 +75,9 @@ public interface IdleNotifierConfig extends Config
 		description = "Configures if the idle logout notifications are enabled",
 		position = 4
 	)
-	default boolean logoutIdle()
+	default Notification logoutIdle()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
@@ -89,48 +93,144 @@ public interface IdleNotifierConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "hitpoints",
-		name = "Hitpoints Notification Threshold",
-		description = "The amount of hitpoints to send a notification at. A value of 0 will disable notification.",
+		keyName = "hitpointsNotification",
+		name = "Hitpoints Notification",
+		description = "Configures if hitpoints notifications are enabled",
 		position = 6
 	)
+	default Notification getHitpointsNotification()
+	{
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "hitpoints",
+		name = "Hitpoints Threshold",
+		description = "The amount of hitpoints to send a notification at.",
+		position = 7
+	)
+	@Range(min = 1)
 	default int getHitpointsThreshold()
 	{
-		return 0;
+		return 1;
+	}
+
+	@ConfigItem(
+		keyName = "prayerNotification",
+		name = "Prayer Notification",
+		description = "Configures if prayer notifications are enabled.",
+		position = 8
+	)
+	default Notification getPrayerNotification()
+	{
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
 		keyName = "prayer",
-		name = "Prayer Notification Threshold",
-		description = "The amount of prayer points to send a notification at. A value of 0 will disable notification.",
-		position = 7
+		name = "Prayer Threshold",
+		description = "The amount of prayer points to send a notification at.",
+		position = 9
 	)
+	@Range(min = 1)
 	default int getPrayerThreshold()
 	{
+		return 1;
+	}
+
+	@ConfigItem(
+		keyName = "lowEnergyNotification",
+		name = "Low Energy Notification",
+		description = "Configures if low energy notifications are enabled",
+		position = 10
+	)
+	default Notification getLowEnergyNotification()
+	{
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "lowEnergy",
+		name = "Low Energy Threshold",
+		description = "The amount of energy points remaining to send a notification at.",
+		position = 11
+	)
+	@Units(Units.PERCENT)
+	@Range(max = 99)
+	default int getLowEnergyThreshold()
+	{
 		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "highEnergyNotification",
+		name = "High Energy Notification",
+		description = "Configures if high energy notifications are enabled",
+		position = 12
+	)
+	default Notification getHighEnergyNotification()
+	{
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "highEnergy",
+		name = "High Energy Threshold",
+		description = "The amount of energy points reached to send a notification.",
+		position = 13
+	)
+	@Units(Units.PERCENT)
+	@Range(min = 1, max = 100)
+	default int getHighEnergyThreshold()
+	{
+		return 100;
+	}
+
+	@ConfigItem(
+		keyName = "oxygenNotification",
+		name = "Oxygen Notification",
+		description = "Configures if oxygen notifications are enabled",
+		position = 14
+	)
+	default Notification getOxygenNotification()
+	{
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
 		keyName = "oxygen",
-		name = "Oxygen Notification Threshold",
-		position = 8,
-		description = "The amount of remaining oxygen to send a notification at. A value of 0 will disable notification."
+		name = "Oxygen Threshold",
+		position = 15,
+		description = "The amount of remaining oxygen to send a notification at."
 	)
 	@Units(Units.PERCENT)
+	@Range(min = 1)
 	default int getOxygenThreshold()
 	{
-		return 0;
+		return 1;
+	}
+
+	@ConfigItem(
+		keyName = "specNotification",
+		name = "Spec Notification",
+		description = "Configures if special attack notifications are enabled",
+		position = 16
+	)
+	default Notification getSpecNotification()
+	{
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
 		keyName = "spec",
-		name = "Special Attack Energy Notification Threshold",
-		position = 9,
-		description = "The amount of spec energy reached to send a notification at. A value of 0 will disable notification."
+		name = "Spec Threshold",
+		position = 17,
+		description = "The amount of special attack energy reached to send a notification at."
 	)
 	@Units(Units.PERCENT)
+	@Range(min = 1)
 	default int getSpecEnergyThreshold()
 	{
-		return 0;
+		return 1;
 	}
 }

@@ -25,10 +25,12 @@
 package net.runelite.client.plugins.agility;
 
 import java.awt.Color;
+import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Notification;
 import net.runelite.client.config.Units;
 
 @ConfigGroup("agility")
@@ -44,7 +46,7 @@ public interface AgilityConfig extends Config
 	@ConfigItem(
 		keyName = "showClickboxes",
 		name = "Show Clickboxes",
-		description = "Show agility course obstacle clickboxes",
+		description = "Show agility course and other obstacle clickboxes",
 		position = 0
 	)
 	default boolean showClickboxes()
@@ -97,6 +99,7 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "overlayColor",
 		name = "Overlay Color",
@@ -119,6 +122,7 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "markHighlight",
 		name = "Mark Highlight Color",
@@ -141,9 +145,10 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "portalsHighlight",
-		name = "Portals Highlight Color",
+		name = "Portals Color",
 		description = "Color of highlighted Prifddinas portals",
 		position = 9
 	)
@@ -174,6 +179,7 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "trapHighlight",
 		name = "Trap Overlay Color",
@@ -191,9 +197,9 @@ public interface AgilityConfig extends Config
 		description = "Notify on ticket location change in Agility Arena",
 		position = 13
 	)
-	default boolean notifyAgilityArena()
+	default Notification notifyAgilityArena()
 	{
-		return true;
+		return Notification.ON;
 	}
 
 	@ConfigItem(
@@ -218,6 +224,7 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "stickHighlightColor",
 		name = "Stick Highlight Color",
@@ -241,6 +248,7 @@ public interface AgilityConfig extends Config
 		return true;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "sepulchreHighlightColor",
 		name = "Projectile Color",

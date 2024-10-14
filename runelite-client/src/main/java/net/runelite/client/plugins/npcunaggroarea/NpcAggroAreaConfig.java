@@ -29,6 +29,7 @@ import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Notification;
 
 @ConfigGroup("npcUnaggroArea")
 public interface NpcAggroAreaConfig extends Config
@@ -83,25 +84,25 @@ public interface NpcAggroAreaConfig extends Config
 		return false;
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "npcAggroAreaColor",
 		name = "Aggressive colour",
 		description = "Choose colour to use for marking NPC unaggressive area when NPCs are aggressive",
 		position = 5
 	)
-	@Alpha
 	default Color aggroAreaColor()
 	{
 		return new Color(0x64FFFF00, true);
 	}
 
+	@Alpha
 	@ConfigItem(
 		keyName = "npcUnaggroAreaColor",
 		name = "Unaggressive colour",
 		description = "Choose colour to use for marking NPC unaggressive area after NPCs have lost aggression",
 		position = 6
 	)
-	@Alpha
 	default Color unaggroAreaColor()
 	{
 		return new Color(0xFFFF00);
@@ -110,10 +111,32 @@ public interface NpcAggroAreaConfig extends Config
 	@ConfigItem(
 		keyName = "notifyExpire",
 		name = "Notify Expiration",
-		description = "Send a notifcation when the unaggressive timer expires",
+		description = "Send a notification when the unaggressive timer expires",
 		position = 7
 	)
-	default boolean notifyExpire()
+	default Notification notifyExpire()
+	{
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "hideIfOutOfCombat",
+		name = "Hide when out of combat",
+		description = "Hides unaggressive area lines when out of combat.",
+		position = 8
+	)
+	default boolean hideIfOutOfCombat()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "showOnSlayerTask",
+		name = "Show on slayer task",
+		description = "Enable for current slayer task NPCs",
+		position = 9
+	)
+	default boolean showOnSlayerTask()
 	{
 		return false;
 	}

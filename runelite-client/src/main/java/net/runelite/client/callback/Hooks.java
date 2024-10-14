@@ -24,7 +24,6 @@
  */
 package net.runelite.client.callback;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -34,27 +33,38 @@ import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MainBufferProvider;
-import net.runelite.api.NullItemID;
-import net.runelite.api.RenderOverview;
+import net.runelite.api.Renderable;
 import net.runelite.api.Skill;
-import net.runelite.api.WorldMapManager;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.FakeXpDrop;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.hooks.Callbacks;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import static net.runelite.api.widgets.WidgetInfo.WORLD_MAP_VIEW;
 import net.runelite.api.widgets.WidgetItem;
+import net.runelite.api.worldmap.WorldMap;
+import net.runelite.api.worldmap.WorldMapRenderer;
 import net.runelite.client.Notifier;
+import net.runelite.client.RuneLiteProperties;
+import net.runelite.client.RuntimeConfig;
+import net.runelite.client.TelemetryClient;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -64,10 +74,10 @@ import net.runelite.client.task.Scheduler;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayRenderer;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import net.runelite.client.util.DeferredEventBus;
+import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.RSTimeUnit;
 
 /**
@@ -84,58 +94,46 @@ public class Hooks implements Callbacks
 	private static final GameTick GAME_TICK = new GameTick();
 	private static final BeforeRender BEFORE_RENDER = new BeforeRender();
 
-	@Inject
-	private Client client;
-
-	@Inject
-	private OverlayRenderer renderer;
-
-	@Inject
-	private OverlayManager overlayManager;
-
-	@Inject
-	private EventBus eventBus;
-
-	@Inject
-	private DeferredEventBus deferredEventBus;
-
-	@Inject
-	private Scheduler scheduler;
-
-	@Inject
-	private InfoBoxManager infoBoxManager;
-
-	@Inject
-	private ChatMessageManager chatMessageManager;
-
-	@Inject
-	private MouseManager mouseManager;
-
-	@Inject
-	private KeyManager keyManager;
-
-	@Inject
-	private ClientThread clientThread;
-
-	@Inject
-	private DrawManager drawManager;
-
-	@Inject
-	private Notifier notifier;
-
-	@Inject
-	private ClientUI clientUi;
+	private final Client client;
+	private final OverlayRenderer renderer;
+	private final EventBus eventBus;
+	private final DeferredEventBus deferredEventBus;
+	private final Scheduler scheduler;
+	private final InfoBoxManager infoBoxManager;
+	private final ChatMessageManager chatMessageManager;
+	private final MouseManager mouseManager;
+	private final KeyManager keyManager;
+	private final ClientThread clientThread;
+	private final DrawManager drawManager;
+	private final Notifier notifier;
+	private final ClientUI clientUi;
+	@Nullable
+	private final TelemetryClient telemetryClient;
+	@Nullable
+	private final RuntimeConfig runtimeConfig;
+	private final boolean developerMode;
 
 	private Dimension lastStretchedDimensions;
 	private VolatileImage stretchedImage;
 	private Graphics2D stretchedGraphics;
 
 	private long lastCheck;
-	private boolean ignoreNextNpcUpdate;
 	private boolean shouldProcessGameTick;
 
 	private static MainBufferProvider lastMainBufferProvider;
 	private static Graphics2D lastGraphics;
+
+	private long nextError;
+	private boolean rateLimitedError;
+	private int errorBackoff = 1;
+
+	@FunctionalInterface
+	public interface RenderableDrawListener
+	{
+		boolean draw(Renderable renderable, boolean ui);
+	}
+
+	private final List<RenderableDrawListener> renderableDrawListeners = new ArrayList<>();
 
 	/**
 	 * Get the Graphics2D for the MainBufferProvider image
@@ -159,6 +157,45 @@ public class Hooks implements Callbacks
 		return lastGraphics;
 	}
 
+	@Inject
+	private Hooks(
+		Client client,
+		OverlayRenderer renderer,
+		EventBus eventBus,
+		DeferredEventBus deferredEventBus,
+		Scheduler scheduler,
+		InfoBoxManager infoBoxManager,
+		ChatMessageManager chatMessageManager,
+		MouseManager mouseManager,
+		KeyManager keyManager,
+		ClientThread clientThread,
+		DrawManager drawManager,
+		Notifier notifier,
+		ClientUI clientUi,
+		@Nullable TelemetryClient telemetryClient,
+		@Nullable RuntimeConfig runtimeConfig,
+		@Named("developerMode") final boolean developerMode
+	)
+	{
+		this.client = client;
+		this.renderer = renderer;
+		this.eventBus = eventBus;
+		this.deferredEventBus = deferredEventBus;
+		this.scheduler = scheduler;
+		this.infoBoxManager = infoBoxManager;
+		this.chatMessageManager = chatMessageManager;
+		this.mouseManager = mouseManager;
+		this.keyManager = keyManager;
+		this.clientThread = clientThread;
+		this.drawManager = drawManager;
+		this.notifier = notifier;
+		this.clientUi = clientUi;
+		this.telemetryClient = telemetryClient;
+		this.runtimeConfig = runtimeConfig;
+		this.developerMode = developerMode;
+		eventBus.register(this);
+	}
+
 	@Override
 	public void post(Object event)
 	{
@@ -172,7 +209,7 @@ public class Hooks implements Callbacks
 	}
 
 	@Override
-	public void clientMainLoop()
+	public void tick()
 	{
 		if (shouldProcessGameTick)
 		{
@@ -185,8 +222,6 @@ public class Hooks implements Callbacks
 			int tick = client.getTickCount();
 			client.setTickCount(tick + 1);
 		}
-
-		eventBus.post(BEFORE_RENDER);
 
 		clientThread.invoke();
 
@@ -213,8 +248,21 @@ public class Hooks implements Callbacks
 		}
 		catch (Exception ex)
 		{
-			log.warn("error during main loop tasks", ex);
+			log.error("error during main loop tasks", ex);
 		}
+	}
+
+	@Override
+	public void tickEnd()
+	{
+		clientThread.invokeTickEnd();
+		eventBus.post(new PostClientTick());
+	}
+
+	@Override
+	public void frame()
+	{
+		eventBus.post(BEFORE_RENDER);
 	}
 
 	/**
@@ -227,26 +275,24 @@ public class Hooks implements Callbacks
 	 */
 	private void checkWorldMap()
 	{
-		Widget widget = client.getWidget(WORLD_MAP_VIEW);
+		Widget widget = client.getWidget(ComponentID.WORLD_MAP_MAPVIEW);
 
 		if (widget != null)
 		{
 			return;
 		}
 
-		RenderOverview renderOverview = client.getRenderOverview();
-
-		if (renderOverview == null)
+		WorldMap worldMap = client.getWorldMap();
+		if (worldMap == null)
 		{
 			return;
 		}
 
-		WorldMapManager manager = renderOverview.getWorldMapManager();
-
+		WorldMapRenderer manager = worldMap.getWorldMapRenderer();
 		if (manager != null && manager.isLoaded())
 		{
 			log.debug("World map was closed, reinitializing");
-			renderOverview.initializeWorldMap(renderOverview.getWorldMapData());
+			worldMap.initializeWorldMap(worldMap.getWorldMapData());
 		}
 	}
 
@@ -328,11 +374,11 @@ public class Hooks implements Callbacks
 
 		try
 		{
-			renderer.render(graphics2d, OverlayLayer.ALWAYS_ON_TOP);
+			renderer.renderOverlayLayer(graphics2d, OverlayLayer.ALWAYS_ON_TOP);
 		}
 		catch (Exception ex)
 		{
-			log.warn("Error during overlay rendering", ex);
+			log.error("Error during overlay rendering", ex);
 		}
 
 		notifier.processFlash(graphics2d);
@@ -355,27 +401,36 @@ public class Hooks implements Callbacks
 			GraphicsConfiguration gc = clientUi.getGraphicsConfiguration();
 			Dimension stretchedDimensions = client.getStretchedDimensions();
 
-			if (lastStretchedDimensions == null || !lastStretchedDimensions.equals(stretchedDimensions)
-				|| (stretchedImage != null && stretchedImage.validate(gc) == VolatileImage.IMAGE_INCOMPATIBLE))
+			int status = -1;
+			if (!stretchedDimensions.equals(lastStretchedDimensions)
+				|| stretchedImage == null
+				|| (status = stretchedImage.validate(gc)) != VolatileImage.IMAGE_OK)
 			{
-				/*
-					Reuse the resulting image instance to avoid creating an extreme amount of objects
-				 */
-				stretchedImage = gc.createCompatibleVolatileImage(stretchedDimensions.width, stretchedDimensions.height);
+				log.debug("Volatile image non-OK status: {}", status);
+
+				// if IMAGE_INCOMPATIBLE the image and g2d need to be rebuilt, otherwise
+				// if IMAGE_RESTORED only the g2d needs to be rebuilt
 
 				if (stretchedGraphics != null)
 				{
 					stretchedGraphics.dispose();
 				}
+
+				if (!stretchedDimensions.equals(lastStretchedDimensions)
+					|| stretchedImage == null
+					|| status == VolatileImage.IMAGE_INCOMPATIBLE)
+				{
+					if (stretchedImage != null)
+					{
+						// VolatileImage javadocs says this proactively releases the resources used by the VolatileImage
+						stretchedImage.flush();
+					}
+
+					stretchedImage = gc.createCompatibleVolatileImage(stretchedDimensions.width, stretchedDimensions.height);
+					lastStretchedDimensions = stretchedDimensions;
+				}
+
 				stretchedGraphics = (Graphics2D) stretchedImage.getGraphics();
-
-				lastStretchedDimensions = stretchedDimensions;
-
-				/*
-					Fill Canvas before drawing stretched image to prevent artifacts.
-				*/
-				graphics.setColor(Color.BLACK);
-				graphics.fillRect(0, 0, client.getCanvas().getWidth(), client.getCanvas().getHeight());
 			}
 
 			stretchedGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -388,6 +443,18 @@ public class Hooks implements Callbacks
 		}
 		else
 		{
+			if (stretchedImage != null)
+			{
+				log.debug("Releasing stretched volatile image");
+
+				stretchedGraphics.dispose();
+				stretchedImage.flush();
+
+				stretchedGraphics = null;
+				stretchedImage = null;
+				lastStretchedDimensions = null;
+			}
+
 			finalImage = image;
 		}
 
@@ -396,21 +463,21 @@ public class Hooks implements Callbacks
 
 		// finalImage is backed by the client buffer which will change soon. make a copy
 		// so that callbacks can safely use it later from threads.
-		drawManager.processDrawComplete(() -> copy(finalImage));
+		drawManager.processDrawComplete(() -> screenshot(finalImage));
 	}
 
-	/**
-	 * Copy an image
-	 * @param src
-	 * @return
-	 */
-	private static Image copy(Image src)
+	private Image screenshot(Image src)
 	{
-		final int width = src.getWidth(null);
-		final int height = src.getHeight(null);
-		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		Graphics graphics = image.getGraphics();
-		graphics.drawImage(src, 0, 0, width, height, null);
+		// scale source image to the size of the client ui
+		final AffineTransform transform = clientUi.getGraphicsConfiguration().getDefaultTransform();
+		int swidth = src.getWidth(null);
+		int sheight = src.getHeight(null);
+		int twidth = (int) (swidth * transform.getScaleX() + .5);
+		int theight = (int) (sheight * transform.getScaleY() + .5);
+		BufferedImage image = new BufferedImage(twidth, theight, BufferedImage.TYPE_INT_RGB);
+		Graphics2D graphics = (Graphics2D) image.getGraphics();
+		graphics.setTransform(transform);
+		graphics.drawImage(src, 0, 0, swidth, sheight, null);
 		graphics.dispose();
 		return image;
 	}
@@ -423,11 +490,11 @@ public class Hooks implements Callbacks
 
 		try
 		{
-			renderer.render(graphics2d, OverlayLayer.ABOVE_SCENE);
+			renderer.renderOverlayLayer(graphics2d, OverlayLayer.ABOVE_SCENE);
 		}
 		catch (Exception ex)
 		{
-			log.warn("Error during overlay rendering", ex);
+			log.error("Error during overlay rendering", ex);
 		}
 	}
 
@@ -439,78 +506,49 @@ public class Hooks implements Callbacks
 
 		try
 		{
-			renderer.render(graphics2d, OverlayLayer.UNDER_WIDGETS);
+			renderer.renderOverlayLayer(graphics2d, OverlayLayer.UNDER_WIDGETS);
 		}
 		catch (Exception ex)
 		{
-			log.warn("Error during overlay rendering", ex);
+			log.error("Error during overlay rendering", ex);
 		}
 	}
 
 	@Override
-	public void drawAfterWidgets()
+	public void serverTick()
+	{
+		shouldProcessGameTick = true;
+	}
+
+	@Override
+	public void drawInterface(int interfaceId, List<WidgetItem> widgetItems)
 	{
 		MainBufferProvider bufferProvider = (MainBufferProvider) client.getBufferProvider();
 		Graphics2D graphics2d = getGraphics(bufferProvider);
 
 		try
 		{
-			renderer.render(graphics2d, OverlayLayer.ABOVE_MAP);
-			renderer.render(graphics2d, OverlayLayer.ABOVE_WIDGETS);
+			renderer.renderAfterInterface(graphics2d, interfaceId, widgetItems);
 		}
 		catch (Exception ex)
 		{
-			log.warn("Error during overlay rendering", ex);
-		}
-
-		// WidgetItemOverlays render at ABOVE_WIDGETS, reset widget item
-		// list for next frame.
-		overlayManager.getItemWidgets().clear();
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
-	{
-		switch (gameStateChanged.getGameState())
-		{
-			case LOGGING_IN:
-			case HOPPING:
-				ignoreNextNpcUpdate = true;
+			log.error("Error during overlay rendering", ex);
 		}
 	}
 
 	@Override
-	public void updateNpcs()
+	public void drawLayer(Widget layer, List<WidgetItem> widgetItems)
 	{
-		if (ignoreNextNpcUpdate)
-		{
-			// After logging in an NPC update happens outside of the normal game tick, which
-			// is sent prior to skills and vars being bursted, so ignore it.
-			ignoreNextNpcUpdate = false;
-			log.debug("Skipping login updateNpc");
-		}
-		else
-		{
-			// The NPC update event seem to run every server tick,
-			// but having the game tick event after all packets
-			// have been processed is typically more useful.
-			shouldProcessGameTick = true;
-		}
+		MainBufferProvider bufferProvider = (MainBufferProvider) client.getBufferProvider();
+		Graphics2D graphics2d = getGraphics(bufferProvider);
 
-		// Replay deferred events, otherwise if two npc
-		// update packets get processed in one client tick, a
-		// despawn event could be published prior to the
-		// spawn event, which is deferred
-		deferredEventBus.replay();
-	}
-
-	@Override
-	public void drawItem(int itemId, WidgetItem widgetItem)
-	{
-		// Empty bank item
-		if (widgetItem.getId() != NullItemID.NULL_6512)
+		try
 		{
-			overlayManager.getItemWidgets().add(widgetItem);
+			renderer.renderAfterLayer(graphics2d, layer, widgetItems);
+		}
+		catch (Exception ex)
+		{
+			log.error("Error during overlay rendering", ex);
 		}
 	}
 
@@ -534,5 +572,102 @@ public class Hooks implements Callbacks
 			xp
 		);
 		eventBus.post(fakeXpDrop);
+	}
+
+	public void registerRenderableDrawListener(RenderableDrawListener listener)
+	{
+		renderableDrawListeners.add(listener);
+	}
+
+	public void unregisterRenderableDrawListener(RenderableDrawListener listener)
+	{
+		renderableDrawListeners.remove(listener);
+	}
+
+	@Override
+	public boolean draw(Renderable renderable, boolean drawingUi)
+	{
+		try
+		{
+			for (RenderableDrawListener renderableDrawListener : renderableDrawListeners)
+			{
+				if (!renderableDrawListener.draw(renderable, drawingUi))
+				{
+					return false;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			log.error("exception from renderable draw listener", ex);
+		}
+		return true;
+	}
+
+	@Override
+	public void error(String message, Throwable reason)
+	{
+		if (telemetryClient == null)
+		{
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+		if (now > nextError)
+		{
+			var sw = new StringWriter();
+			sw.append(message);
+			if (reason != null)
+			{
+				sw.append(" - ").append(reason.toString()).append('\n');
+				try (var pw = new PrintWriter(sw))
+				{
+					reason.printStackTrace(pw);
+				}
+			}
+
+			telemetryClient.submitError(
+				"client error",
+				sw.toString());
+
+			if (rateLimitedError)
+			{
+				errorBackoff++;
+				rateLimitedError = false;
+			}
+			else
+			{
+				errorBackoff = 1;
+			}
+
+			nextError = now + (10_000L * errorBackoff);
+		}
+		else
+		{
+			rateLimitedError = true;
+		}
+	}
+
+	@Override
+	public void openUrl(String url)
+	{
+		LinkBrowser.browse(url);
+	}
+
+	@Override
+	public boolean isRuneLiteClientOutdated()
+	{
+		if (runtimeConfig == null || developerMode)
+		{
+			return false;
+		}
+
+		Set<String> outdatedClientVersions = runtimeConfig.getOutdatedClientVersions();
+		if (outdatedClientVersions == null)
+		{
+			return false;
+		}
+
+		return outdatedClientVersions.contains(RuneLiteProperties.getVersion());
 	}
 }

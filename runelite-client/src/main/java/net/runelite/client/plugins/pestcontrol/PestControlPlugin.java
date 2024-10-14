@@ -34,7 +34,6 @@ import javax.inject.Inject;
 import lombok.AccessLevel;
 import lombok.Getter;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.NpcID;
@@ -65,13 +64,10 @@ public class PestControlPlugin extends Plugin
 	private final Pattern SHIELD_DROP = Pattern.compile("The ([a-z]+), [^ ]+ portal shield has dropped!", Pattern.CASE_INSENSITIVE);
 
 	@Getter(AccessLevel.PACKAGE)
-	private List<NPC> spinners = new ArrayList<>();
+	private final List<NPC> spinners = new ArrayList<>();
 
 	@Inject
 	private OverlayManager overlayManager;
-
-	@Inject
-	private Client client;
 
 	@Inject
 	private PestControlOverlay overlay;

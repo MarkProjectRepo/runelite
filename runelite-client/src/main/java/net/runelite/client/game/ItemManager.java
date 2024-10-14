@@ -28,10 +28,12 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
+import com.google.inject.Inject;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +42,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -49,18 +51,14 @@ import net.runelite.api.Constants;
 import static net.runelite.api.Constants.CLIENT_DEFAULT_ZOOM;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemID;
 import static net.runelite.api.ItemID.*;
 import net.runelite.api.SpritePixels;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.PostItemComposition;
+import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.http.api.item.ItemClient;
 import net.runelite.http.api.item.ItemPrice;
 import net.runelite.http.api.item.ItemStats;
-import okhttp3.OkHttpClient;
 
 @Singleton
 @Slf4j
@@ -85,11 +83,21 @@ public class ItemManager
 	private final Client client;
 	private final ClientThread clientThread;
 	private final ItemClient itemClient;
+	private final RuneLiteConfig runeLiteConfig;
+
+	@Inject(optional = true)
+	@Named("activePriceThreshold")
+	@SuppressWarnings("PMD.ImmutableField")
+	private double activePriceThreshold = 5;
+
+	@Inject(optional = true)
+	@Named("lowPriceThreshold")
+	@SuppressWarnings("PMD.ImmutableField")
+	private int lowPriceThreshold = 1000;
 
 	private Map<Integer, ItemPrice> itemPrices = Collections.emptyMap();
 	private Map<Integer, ItemStats> itemStats = Collections.emptyMap();
 	private final LoadingCache<ImageKey, AsyncBufferedImage> itemImages;
-	private final LoadingCache<Integer, ItemComposition> itemCompositions;
 	private final LoadingCache<OutlineKey, BufferedImage> itemOutlines;
 
 	// Worn items with weight reducing property have a different worn and inventory ItemID
@@ -151,6 +159,24 @@ public class ItemManager
 		put(GRACEFUL_LEGS_24754, GRACEFUL_LEGS_24752).
 		put(GRACEFUL_GLOVES_24757, GRACEFUL_GLOVES_24755).
 		put(GRACEFUL_BOOTS_24760, GRACEFUL_BOOTS_24758).
+		put(GRACEFUL_HOOD_25071, GRACEFUL_HOOD_25069).
+		put(GRACEFUL_CAPE_25074, GRACEFUL_CAPE_25072).
+		put(GRACEFUL_TOP_25077, GRACEFUL_TOP_25075).
+		put(GRACEFUL_LEGS_25080, GRACEFUL_LEGS_25078).
+		put(GRACEFUL_GLOVES_25083, GRACEFUL_GLOVES_25081).
+		put(GRACEFUL_BOOTS_25086, GRACEFUL_BOOTS_25084).
+		put(GRACEFUL_HOOD_27446, GRACEFUL_HOOD_27444).
+		put(GRACEFUL_CAPE_27449, GRACEFUL_CAPE_27447).
+		put(GRACEFUL_TOP_27452, GRACEFUL_TOP_27450).
+		put(GRACEFUL_LEGS_27455, GRACEFUL_LEGS_27453).
+		put(GRACEFUL_GLOVES_27458, GRACEFUL_GLOVES_27456).
+		put(GRACEFUL_BOOTS_27461, GRACEFUL_BOOTS_27459).
+		put(GRACEFUL_HOOD_30047, GRACEFUL_HOOD_30045).
+		put(GRACEFUL_CAPE_30050, GRACEFUL_CAPE_30048).
+		put(GRACEFUL_TOP_30053, GRACEFUL_TOP_30051).
+		put(GRACEFUL_LEGS_30056, GRACEFUL_LEGS_30054).
+		put(GRACEFUL_GLOVES_30059, GRACEFUL_GLOVES_30057).
+		put(GRACEFUL_BOOTS_30062, GRACEFUL_BOOTS_30060).
 
 		put(MAX_CAPE_13342, MAX_CAPE).
 
@@ -163,11 +189,12 @@ public class ItemManager
 
 	@Inject
 	public ItemManager(Client client, ScheduledExecutorService scheduledExecutorService, ClientThread clientThread,
-		OkHttpClient okHttpClient)
+		ItemClient itemClient, RuneLiteConfig runeLiteConfig)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
-		this.itemClient = new ItemClient(okHttpClient);
+		this.itemClient = itemClient;
+		this.runeLiteConfig = runeLiteConfig;
 
 		scheduledExecutorService.scheduleWithFixedDelay(this::loadPrices, 0, 30, TimeUnit.MINUTES);
 		scheduledExecutorService.submit(this::loadStats);
@@ -175,7 +202,7 @@ public class ItemManager
 		itemImages = CacheBuilder.newBuilder()
 			.maximumSize(128L)
 			.expireAfterAccess(1, TimeUnit.HOURS)
-			.build(new CacheLoader<ImageKey, AsyncBufferedImage>()
+			.build(new CacheLoader<>()
 			{
 				@Override
 				public AsyncBufferedImage load(ImageKey key) throws Exception
@@ -184,22 +211,10 @@ public class ItemManager
 				}
 			});
 
-		itemCompositions = CacheBuilder.newBuilder()
-			.maximumSize(1024L)
-			.expireAfterAccess(1, TimeUnit.HOURS)
-			.build(new CacheLoader<Integer, ItemComposition>()
-			{
-				@Override
-				public ItemComposition load(Integer key) throws Exception
-				{
-					return client.getItemDefinition(key);
-				}
-			});
-
 		itemOutlines = CacheBuilder.newBuilder()
 			.maximumSize(128L)
 			.expireAfterAccess(1, TimeUnit.HOURS)
-			.build(new CacheLoader<OutlineKey, BufferedImage>()
+			.build(new CacheLoader<>()
 			{
 				@Override
 				public BufferedImage load(OutlineKey key) throws Exception
@@ -250,31 +265,6 @@ public class ItemManager
 		}
 	}
 
-
-	@Subscribe
-	public void onGameStateChanged(final GameStateChanged event)
-	{
-		if (event.getGameState() == GameState.HOPPING || event.getGameState() == GameState.LOGIN_SCREEN)
-		{
-			itemCompositions.invalidateAll();
-		}
-	}
-
-	@Subscribe
-	public void onPostItemComposition(PostItemComposition event)
-	{
-		itemCompositions.put(event.getItemComposition().getId(), event.getItemComposition());
-	}
-
-	/**
-	 * Invalidates internal item manager item composition cache (but not client item composition cache)
-	 * @see Client#getItemCompositionCache()
-	 */
-	public void invalidateItemCompositionCache()
-	{
-		itemCompositions.invalidateAll();
-	}
-
 	/**
 	 * Look up an item's price
 	 *
@@ -283,23 +273,23 @@ public class ItemManager
 	 */
 	public int getItemPrice(int itemID)
 	{
-		return getItemPrice(itemID, false);
+		return getItemPriceWithSource(itemID, runeLiteConfig.useWikiItemPrices());
 	}
 
 	/**
 	 * Look up an item's price
 	 *
 	 * @param itemID item id
-	 * @param ignoreUntradeableMap should the price returned ignore the {@link UntradeableItemMapping}
+	 * @param useWikiPrice use the actively traded/wiki price
 	 * @return item price
 	 */
-	public int getItemPrice(int itemID, boolean ignoreUntradeableMap)
+	public int getItemPriceWithSource(int itemID, boolean useWikiPrice)
 	{
-		if (itemID == ItemID.COINS_995)
+		if (itemID == COINS_995)
 		{
 			return 1;
 		}
-		if (itemID == ItemID.PLATINUM_TOKEN)
+		if (itemID == PLATINUM_TOKEN)
 		{
 			return 1000;
 		}
@@ -311,26 +301,48 @@ public class ItemManager
 		}
 		itemID = WORN_ITEMS.getOrDefault(itemID, itemID);
 
-		if (!ignoreUntradeableMap)
-		{
-			UntradeableItemMapping p = UntradeableItemMapping.map(ItemVariationMapping.map(itemID));
-			if (p != null)
-			{
-				return getItemPrice(p.getPriceID()) * p.getQuantity();
-			}
-		}
-
 		int price = 0;
-		for (int mappedID : ItemMapping.map(itemID))
+
+		final Collection<ItemMapping> mappedItems = ItemMapping.map(itemID);
+
+		if (mappedItems == null)
 		{
-			ItemPrice ip = itemPrices.get(mappedID);
+			final ItemPrice ip = itemPrices.get(itemID);
+
 			if (ip != null)
 			{
-				price += ip.getPrice();
+				price = useWikiPrice ? getWikiPrice(ip) : ip.getPrice();
+			}
+		}
+		else
+		{
+			for (final ItemMapping mappedItem : mappedItems)
+			{
+				price += getItemPriceWithSource(mappedItem.getTradeableItem(), useWikiPrice) * mappedItem.getQuantity();
 			}
 		}
 
 		return price;
+	}
+
+	/**
+	 * Get the wiki price for an item, with checks to try and avoid excessive price manipulation
+	 * @param itemPrice
+	 * @return
+	 */
+	public int getWikiPrice(ItemPrice itemPrice)
+	{
+		final int wikiPrice = itemPrice.getWikiPrice();
+		final int jagPrice = itemPrice.getPrice();
+		if (wikiPrice <= 0)
+		{
+			return jagPrice;
+		}
+		if (wikiPrice <= lowPriceThreshold)
+		{
+			return wikiPrice;
+		}
+		return wikiPrice < jagPrice * activePriceThreshold ? wikiPrice : jagPrice;
 	}
 
 	/**
@@ -382,8 +394,7 @@ public class ItemManager
 	@Nonnull
 	public ItemComposition getItemComposition(int itemId)
 	{
-		assert client.isClientThread() : "getItemComposition must be called on client thread";
-		return itemCompositions.getUnchecked(itemId);
+		return client.getItemDefinition(itemId);
 	}
 
 	/**
@@ -414,7 +425,7 @@ public class ItemManager
 	 */
 	private AsyncBufferedImage loadImage(int itemId, int quantity, boolean stackable)
 	{
-		AsyncBufferedImage img = new AsyncBufferedImage(Constants.ITEM_SPRITE_WIDTH, Constants.ITEM_SPRITE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		AsyncBufferedImage img = new AsyncBufferedImage(clientThread, Constants.ITEM_SPRITE_WIDTH, Constants.ITEM_SPRITE_HEIGHT, BufferedImage.TYPE_INT_ARGB);
 		clientThread.invoke(() ->
 		{
 			if (client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal())
@@ -422,7 +433,7 @@ public class ItemManager
 				return false;
 			}
 			SpritePixels sprite = client.createItemSprite(itemId, quantity, 1, SpritePixels.DEFAULT_SHADOW_COLOR,
-				stackable ? 1 : 0, false, CLIENT_DEFAULT_ZOOM);
+				stackable ? ItemQuantityMode.ALWAYS : ItemQuantityMode.NEVER, false, CLIENT_DEFAULT_ZOOM);
 			if (sprite == null)
 			{
 				return false;
@@ -482,7 +493,7 @@ public class ItemManager
 	 */
 	private BufferedImage loadItemOutline(final int itemId, final int itemQuantity, final Color outlineColor)
 	{
-		final SpritePixels itemSprite = client.createItemSprite(itemId, itemQuantity, 1, 0, 0, true, 710);
+		final SpritePixels itemSprite = client.createItemSprite(itemId, itemQuantity, 1, 0, 0, false, CLIENT_DEFAULT_ZOOM);
 		return itemSprite.toBufferedOutline(outlineColor);
 	}
 

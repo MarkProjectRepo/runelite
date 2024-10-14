@@ -32,13 +32,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
-import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
@@ -57,6 +55,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
 import net.runelite.client.events.PluginChanged;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -81,6 +80,7 @@ class PluginListPanel extends PluginPanel
 		"Item",
 		"Minigame",
 		"Notification",
+		"Plugin Hub",
 		"Skilling",
 		"XP"
 	);
@@ -106,10 +106,8 @@ class PluginListPanel extends PluginPanel
 		ConfigManager configManager,
 		PluginManager pluginManager,
 		ExternalPluginManager externalPluginManager,
-		ScheduledExecutorService executorService,
 		EventBus eventBus,
-		Provider<ConfigPanel> configPanelProvider,
-		Provider<PluginHubPanel> pluginHubPanelProvider)
+		Provider<ConfigPanel> configPanelProvider)
 	{
 		super(false);
 
@@ -174,15 +172,9 @@ class PluginListPanel extends PluginPanel
 		mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
 		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		JButton externalPluginButton = new JButton("Plugin Hub");
-		externalPluginButton.setBorder(new EmptyBorder(5, 5, 5, 5));
-		externalPluginButton.setLayout(new BorderLayout(0, BORDER_OFFSET));
-		externalPluginButton.addActionListener(l -> muxer.pushState(pluginHubPanelProvider.get()));
-
 		JPanel northPanel = new FixedWidthPanel();
 		northPanel.setLayout(new BorderLayout());
 		northPanel.add(mainPanel, BorderLayout.NORTH);
-		northPanel.add(externalPluginButton, BorderLayout.SOUTH);
 
 		scrollPane = new JScrollPane(northPanel);
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -203,6 +195,9 @@ class PluginListPanel extends PluginPanel
 					PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
 					Config config = pluginManager.getPluginConfigProxy(plugin);
 					ConfigDescriptor configDescriptor = config == null ? null : configManager.getConfigDescriptor(config);
+					List<String> conflicts = pluginManager.conflictsForPlugin(plugin).stream()
+						.map(Plugin::getName)
+						.collect(Collectors.toList());
 
 					return new PluginConfigurationDescriptor(
 						descriptor.name(),
@@ -210,7 +205,8 @@ class PluginListPanel extends PluginPanel
 						descriptor.tags(),
 						plugin,
 						config,
-						configDescriptor);
+						configDescriptor,
+						conflicts);
 				})
 		)
 			.map(desc ->
@@ -262,31 +258,9 @@ class PluginListPanel extends PluginPanel
 	private void onSearchBarChanged()
 	{
 		final String text = searchBar.getText();
-
 		pluginList.forEach(mainPanel::remove);
-
-		showMatchingPlugins(true, text);
-		showMatchingPlugins(false, text);
-
+		PluginSearch.search(pluginList, text).forEach(mainPanel::add);
 		revalidate();
-	}
-
-	private void showMatchingPlugins(boolean pinned, String text)
-	{
-		if (text.isEmpty())
-		{
-			pluginList.stream().filter(item -> pinned == item.isPinned()).forEach(mainPanel::add);
-			return;
-		}
-
-		final String[] searchTerms = text.toLowerCase().split(" ");
-		pluginList.forEach(listItem ->
-		{
-			if (pinned == listItem.isPinned() && Text.matchesSearchTerms(searchTerms, listItem.getKeywords()))
-			{
-				mainPanel.add(listItem);
-			}
-		});
 	}
 
 	void openConfigurationPanel(String configGroup)
@@ -317,6 +291,7 @@ class PluginListPanel extends PluginPanel
 	{
 		ConfigPanel panel = configPanelProvider.get();
 		panel.init(plugin);
+		muxer.pushState(this);
 		muxer.pushState(panel);
 	}
 
@@ -395,6 +370,12 @@ class PluginListPanel extends PluginPanel
 
 	@Subscribe
 	private void onExternalPluginsChanged(ExternalPluginsChanged ev)
+	{
+		SwingUtilities.invokeLater(this::rebuildPluginList);
+	}
+
+	@Subscribe
+	private void onProfileChanged(ProfileChanged ev)
 	{
 		SwingUtilities.invokeLater(this::rebuildPluginList);
 	}
