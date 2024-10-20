@@ -45,6 +45,8 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
+
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MainBufferProvider;
@@ -120,6 +122,7 @@ public class Hooks implements Callbacks
 	private long lastCheck;
 	private boolean shouldProcessGameTick;
 
+	@Getter
 	private static MainBufferProvider lastMainBufferProvider;
 	private static Graphics2D lastGraphics;
 
@@ -466,7 +469,7 @@ public class Hooks implements Callbacks
 		drawManager.processDrawComplete(() -> screenshot(finalImage));
 	}
 
-	private Image screenshot(Image src)
+	public Image screenshot(Image src)
 	{
 		// scale source image to the size of the client ui
 		final AffineTransform transform = clientUi.getGraphicsConfiguration().getDefaultTransform();

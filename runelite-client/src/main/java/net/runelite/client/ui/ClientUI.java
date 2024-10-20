@@ -23,7 +23,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package net.runelite.client.ui;
-
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.ui.FlatNativeWindowBorder;
 import com.formdev.flatlaf.util.SystemInfo;
@@ -130,6 +129,10 @@ import net.runelite.client.util.OSType;
 import net.runelite.client.util.OSXUtil;
 import net.runelite.client.util.SwingUtil;
 import net.runelite.client.util.WinUtil;
+// import net.runelite.client.util.NPCClickHandler;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import javax.swing.event.MouseInputListener;
+import java.util.AbstractMap;
 
 @Slf4j
 @Singleton
@@ -146,10 +149,13 @@ public class ClientUI
 	private TrayIcon trayIcon;
 
 	private final RuneLiteConfig config;
+	@Getter
 	private final MouseManager mouseManager;
+	@Getter
 	private final Applet client;
 	private final ConfigManager configManager;
 	private final Provider<ClientThread> clientThreadProvider;
+	@Getter
 	private final EventBus eventBus;
 	private final boolean safeMode;
 	private final String title;
@@ -535,7 +541,24 @@ public class ClientUI
 					return mouseEvent;
 				}
 			};
+
+			final ConcurrentLinkedQueue<MouseEvent> clickQueue = new ConcurrentLinkedQueue<>();
+			// final NPCClickHandler npcClickHandler = new NPCClickHandler(this.client);
+			final MouseListener pointQueueListener = new MouseAdapter() {
+				@Override
+				public MouseEvent mouseClicked(MouseEvent e) {
+					clickQueue.add(e);
+					return e;
+				}
+				public ConcurrentLinkedQueue<MouseEvent> getClickQueue() {
+					return clickQueue;
+				}
+				public void clearClickQueue() {
+					clickQueue.clear();
+				}
+			};
 			mouseManager.registerMouseListener(mouseListener);
+			mouseManager.registerMouseListener(pointQueueListener);
 
 			// Decorate window with custom chrome and titlebar if needed
 			withTitleBar = config.enableCustomChrome();

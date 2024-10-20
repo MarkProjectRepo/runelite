@@ -11,3 +11,5 @@ project.properties
 .vscode
 .factorypath
 .DS_Store
+*.pyc
+__pycache__

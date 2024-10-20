@@ -1,0 +1,47 @@
+from py4j.java_gateway import JavaGateway, GatewayParameters
+from pprint import pprint
+import time
+from runelite_python.java.api.world_view import WorldView
+from runelite_python.java.api.player import Player
+from runelite_python.java.clickqueue import ClickQueue
+from runelite_python.java.helpers import wrap_getter
+from runelite_python.java.api.coord.localpoint import LocalPoint
+from runelite_python.java.api.client import Client
+
+class ClientGateway:
+    def __init__(self):
+        self.gateway = JavaGateway(gateway_parameters=GatewayParameters(auto_field=True))
+        self.instance = self.gateway.entry_point
+
+    @wrap_getter(Client)
+    def get_client(self) -> Client:
+        return self.instance.getClient()
+
+    def get_client_ui(self):
+        return self.instance.getClientUI()
+
+    @wrap_getter(WorldView)
+    def get_world_view(self) -> WorldView:
+        return self.get_client().get_top_level_world_view()
+    
+    @wrap_getter(Player)
+    def get_player(self) -> Player:
+        return self.get_client().get_local_player()
+
+    @wrap_getter(LocalPoint)
+    def get_player_location(self):
+        return self.get_player().get_local_location()
+
+    @wrap_getter(ClickQueue)
+    def get_click_queue(self) -> ClickQueue:
+        return self.instance.getClickQueue()
+    
+    def get_image(self):
+        return self.instance.lastImage
+    
+    def get_game_tick(self) -> int:
+        return self.instance.tickCount
+    
+    def get_prayer_enum(self):
+        return self.gateway.jvm.net.runelite.api.Prayer
+
