@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Seth <Sethtroll3@gmail.com>
+ * Copyright (c) 2024, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,53 +22,20 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.motherlode;
+package net.runelite.api.events;
 
-import java.time.Duration;
-import java.time.Instant;
-import javax.inject.Singleton;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import lombok.Value;
+import net.runelite.api.Scene;
+import net.runelite.api.WorldView;
 
-@Getter
-@Slf4j
-@Singleton
-class MotherlodeSession
+/**
+ * This event is run from the maploader thread prior to the map load completing.
+ * Most client operations can't be done from this thread safely.
+ * You probably don't want to use this event.
+ */
+@Value
+public class PreMapLoad
 {
-	private static final long HOUR = Duration.ofHours(1).toMillis();
-
-	private int perHour;
-
-	private Instant lastPayDirtMined;
-	private int totalMined;
-
-	private Instant recentPayDirtMined;
-	private int recentMined;
-
-	public void incrementPayDirtMined()
-	{
-		Instant now = Instant.now();
-
-		lastPayDirtMined = now;
-		++totalMined;
-
-		if (recentMined == 0)
-		{
-			recentPayDirtMined = now;
-		}
-		++recentMined;
-
-		Duration timeSinceStart = Duration.between(recentPayDirtMined, now);
-		if (!timeSinceStart.isZero())
-		{
-			perHour = (int) ((double) recentMined * HOUR / timeSinceStart.toMillis());
-		}
-	}
-
-	public void resetRecent()
-	{
-		recentPayDirtMined = null;
-		recentMined = 0;
-	}
-
+	WorldView worldView;
+	Scene scene;
 }
