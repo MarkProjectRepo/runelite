@@ -122,9 +122,10 @@ public class ChatCommandsPlugin extends Plugin
 	private static final Pattern HS_KC_FLOOR_PATTERN = Pattern.compile("You have completed Floor (\\d) of the Hallowed Sepulchre! Total completions: <col=ff0000>([0-9,]+)</col>\\.");
 	private static final Pattern HS_KC_GHC_PATTERN = Pattern.compile("You have opened the Grand Hallowed Coffin <col=ff0000>([0-9,]+)</col> times?!");
 	private static final Pattern COLLECTION_LOG_ITEM_PATTERN = Pattern.compile("New item added to your collection log: (.*)");
-	private static final Pattern GUARDIANS_OF_THE_RIFT_PATTERN = Pattern.compile("Amount of Rifts you have closed: <col=ff0000>([0-9,]+)</col>.", Pattern.CASE_INSENSITIVE);
-	private static final Pattern HUNTER_RUMOUR_KC_PATTERN = Pattern.compile("You have completed <col=[0-9a-f]{6}>([0-9,]+)</col> rumours? for the Hunter Guild.");
-	private static final Pattern BIRD_EGG_OFFERING_PATTERN = Pattern.compile("You have made <col=ff0000>(?<kc>[\\d,]+|one)</col> offerings?.");
+	private static final Pattern GUARDIANS_OF_THE_RIFT_PATTERN = Pattern.compile("Amount of Rifts you have closed: <col=ff0000>([0-9,]+)</col>\\.", Pattern.CASE_INSENSITIVE);
+	private static final Pattern HUNTER_RUMOUR_KC_PATTERN = Pattern.compile("You have completed <col=[0-9a-f]{6}>([0-9,]+)</col> rumours? for the Hunter Guild\\.");
+	private static final Pattern BIRD_EGG_OFFERING_PATTERN = Pattern.compile("You have made <col=ff0000>(?<kc>[\\d,]+|one)</col> offerings?\\.");
+	private static final Pattern CHEST_OPENING_PATTERN = Pattern.compile("You have (?<never>never )?opened (the )?(?<chest>crystal chest|Larran's big chest|Larran's small chest|Brimstone chest)( (?<kc>[\\d,]+ times|once))?\\.");
 
 	private static final String TOTAL_LEVEL_COMMAND_STRING = "!total";
 	private static final String PRICE_COMMAND_STRING = "!price";
@@ -142,6 +143,8 @@ public class ChatCommandsPlugin extends Plugin
 	private static final String LEAGUE_POINTS_COMMAND = "!lp";
 	private static final String SOUL_WARS_ZEAL_COMMAND = "!sw";
 	private static final String PET_LIST_COMMAND = "!pets";
+	private static final String CA_COMMAND = "!ca";
+	private static final String CLOG_COMMAND = "!clog";
 
 	@VisibleForTesting
 	static final int ADV_LOG_EXPLOITS_TEXT_INDEX = 1;
@@ -223,6 +226,8 @@ public class ChatCommandsPlugin extends Plugin
 		chatCommandManager.registerCommandAsync(DUEL_ARENA_COMMAND, this::duelArenaLookup, this::duelArenaSubmit);
 		chatCommandManager.registerCommandAsync(SOUL_WARS_ZEAL_COMMAND, this::soulWarsZealLookup);
 		chatCommandManager.registerCommandAsync(PET_LIST_COMMAND, this::petListLookup, this::petListSubmit);
+		chatCommandManager.registerCommandAsync(CA_COMMAND, this::caLookup, this::caSubmit);
+		chatCommandManager.registerCommandAsync(CLOG_COMMAND, this::clogLookup, this::clogSubmit);
 
 		clientThread.invoke(() ->
 		{
@@ -261,6 +266,8 @@ public class ChatCommandsPlugin extends Plugin
 		chatCommandManager.unregisterCommand(DUEL_ARENA_COMMAND);
 		chatCommandManager.unregisterCommand(SOUL_WARS_ZEAL_COMMAND);
 		chatCommandManager.unregisterCommand(PET_LIST_COMMAND);
+		chatCommandManager.unregisterCommand(CA_COMMAND);
+		chatCommandManager.unregisterCommand(CLOG_COMMAND);
 	}
 
 	@Provides
@@ -636,6 +643,27 @@ public class ChatCommandsPlugin extends Plugin
 				: Integer.parseInt(kcString.replace(",", ""));
 
 			setKc("Bird's egg offerings", kc);
+		}
+
+		matcher = CHEST_OPENING_PATTERN.matcher(message);
+		if (matcher.find())
+		{
+			int kc;
+			if (matcher.group("never") != null)
+			{
+				kc = 0;
+			}
+			else
+			{
+				String kcString = matcher.group("kc");
+				kc = kcString.equals("once")
+					? 1
+					: Integer.parseInt(kcString.split(" ")[0].replace(",", ""));
+			}
+
+			String chest = matcher.group("chest");
+
+			setKc(chest, kc);
 		}
 	}
 
@@ -1380,6 +1408,145 @@ public class ChatCommandsPlugin extends Plugin
 			catch (Exception ex)
 			{
 				log.warn("unable to submit pet list", ex);
+			}
+			finally
+			{
+				chatInput.resume();
+			}
+		});
+
+		return true;
+	}
+
+	private void caLookup(ChatMessage chatMessage, String message)
+	{
+		if (!config.ca())
+		{
+			return;
+		}
+
+		ChatMessageType type = chatMessage.getType();
+
+		final String player;
+		if (type.equals(ChatMessageType.PRIVATECHATOUT))
+		{
+			player = client.getLocalPlayer().getName();
+		}
+		else
+		{
+			player = Text.sanitize(chatMessage.getName());
+		}
+
+		int num;
+		try
+		{
+			num = chatClient.getKc(player, "Combat Achievements");
+		}
+		catch (IOException ex)
+		{
+			log.debug("unable to lookup combat achievements");
+			return;
+		}
+
+		String response = new ChatMessageBuilder()
+			.append(ChatColorType.NORMAL)
+			.append("Combat Achievements: ")
+			.append(ChatColorType.HIGHLIGHT)
+			.append(Integer.toString(num))
+			.build();
+
+		log.debug("Setting response {}", response);
+		final MessageNode messageNode = chatMessage.getMessageNode();
+		messageNode.setRuneLiteFormatMessage(response);
+		client.refreshChat();
+	}
+
+	private boolean caSubmit(ChatInput chatInput, String value)
+	{
+		final int tasks = client.getVarbitValue(Varbits.COMBAT_TASK_EASY) +
+			client.getVarbitValue(Varbits.COMBAT_TASK_MEDIUM) +
+			client.getVarbitValue(Varbits.COMBAT_TASK_HARD) +
+			client.getVarbitValue(Varbits.COMBAT_TASK_ELITE) +
+			client.getVarbitValue(Varbits.COMBAT_TASK_MASTER) +
+			client.getVarbitValue(Varbits.COMBAT_TASK_GRANDMASTER);
+		final String playerName = client.getLocalPlayer().getName();
+
+		executor.execute(() ->
+		{
+			try
+			{
+				chatClient.submitKc(playerName, "Combat Achievements", tasks);
+			}
+			catch (Exception ex)
+			{
+				log.warn("unable to submit combat achievements", ex);
+			}
+			finally
+			{
+				chatInput.resume();
+			}
+		});
+
+		return true;
+	}
+
+	private void clogLookup(ChatMessage chatMessage, String message)
+	{
+		if (!config.clog())
+		{
+			return;
+		}
+
+		ChatMessageType type = chatMessage.getType();
+
+		final String player;
+		if (type.equals(ChatMessageType.PRIVATECHATOUT))
+		{
+			player = client.getLocalPlayer().getName();
+		}
+		else
+		{
+			player = Text.sanitize(chatMessage.getName());
+		}
+
+		int num;
+		try
+		{
+			num = chatClient.getKc(player, "Collections Logged");
+		}
+		catch (IOException ex)
+		{
+			log.debug("unable to lookup clog");
+			return;
+		}
+
+		String response = new ChatMessageBuilder()
+			.append(ChatColorType.NORMAL)
+			.append("Collections Logged: ")
+			.append(ChatColorType.HIGHLIGHT)
+			.append(Integer.toString(num))
+			.build();
+
+		log.debug("Setting response {}", response);
+		final MessageNode messageNode = chatMessage.getMessageNode();
+		messageNode.setRuneLiteFormatMessage(response);
+		client.refreshChat();
+	}
+
+	private boolean clogSubmit(ChatInput chatInput, String value)
+	{
+		final int clog = client.getVarpValue(VarPlayer.CLOG_LOGGED);
+		final String playerName = client.getLocalPlayer().getName();
+
+		executor.execute(() ->
+		{
+			try
+			{
+				chatClient.submitKc(playerName, "Collections Logged", clog);
+			}
+			catch (Exception ex)
+			{
+				log.warn("unable to submit clog", ex);
 			}
 			finally
 			{
@@ -2558,6 +2725,22 @@ public class ChatCommandsPlugin extends Plugin
 			case "the hueycoatl":
 			case "huey":
 				return "Hueycoatl";
+
+			case "crystal chest":
+				return "crystal chest";
+
+			case "larran small chest":
+			case "larran's small chest":
+				return "Larran's small chest";
+
+			case "larran chest":
+			case "larran's chest":
+			case "larran big chest":
+			case "larran's big chest":
+				return "Larran's big chest";
+
+			case "brimstone chest":
+				return "Brimstone chest";
 
 			default:
 				return WordUtils.capitalize(boss);
