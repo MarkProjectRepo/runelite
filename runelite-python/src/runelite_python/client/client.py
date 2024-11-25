@@ -7,11 +7,13 @@ from runelite_python.java.clickqueue import ClickQueue
 from runelite_python.java.helpers import wrap_getter
 from runelite_python.java.api.coord.localpoint import LocalPoint
 from runelite_python.java.api.client import Client
+from runelite_python.java.api.enum_manager import EnumManager
 
 class ClientGateway:
     def __init__(self):
         self.gateway = JavaGateway(gateway_parameters=GatewayParameters(auto_field=True))
         self.instance = self.gateway.entry_point
+        self.enum_manager = EnumManager(self.gateway)
 
     @wrap_getter(Client)
     def get_client(self) -> Client:
@@ -24,7 +26,6 @@ class ClientGateway:
     def get_world_view(self) -> WorldView:
         return self.get_client().get_top_level_world_view()
     
-    @wrap_getter(Player)
     def get_player(self) -> Player:
         return self.get_client().get_local_player()
 
@@ -42,6 +43,5 @@ class ClientGateway:
     def get_game_tick(self) -> int:
         return self.instance.tickCount
     
-    def get_prayer_enum(self):
-        return self.gateway.jvm.net.runelite.api.Prayer
-
+    def get_enum(self, enum_name: str):
+        return self.enum_manager.get_enum(enum_name)

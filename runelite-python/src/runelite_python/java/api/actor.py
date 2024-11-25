@@ -8,13 +8,13 @@ class Actor:
     """
 
     def __init__(self, actor_instance):
-        self.actor_instance = actor_instance
+        self.instance = actor_instance
 
     def get_world_view(self):
         """
         Get the WorldView this actor belongs to.
         """
-        return self.actor_instance.getWorldView()
+        return self.instance.getWorldView()
 
     def get_combat_level(self) -> int:
         """
@@ -23,7 +23,7 @@ class Actor:
         Returns:
             int: the combat level
         """
-        return self.actor_instance.getCombatLevel()
+        return self.instance.getCombatLevel()
 
     def get_name(self) -> str:
         """
@@ -32,7 +32,7 @@ class Actor:
         Returns:
             str: the name of the actor, or None if not available
         """
-        return self.actor_instance.getName()
+        return self.instance.getName()
 
     def is_interacting(self) -> bool:
         """
@@ -41,7 +41,7 @@ class Actor:
         Returns:
             bool: True if interacting, False otherwise
         """
-        return self.actor_instance.isInteracting()
+        return self.instance.isInteracting()
 
     def get_interacting(self):
         """
@@ -50,7 +50,7 @@ class Actor:
         Returns:
             Actor: the actor being interacted with, or None if no interaction is occurring
         """
-        return self.actor_instance.getInteracting()
+        return self.instance.getInteracting()
 
     def get_health_ratio(self) -> int:
         """
@@ -59,7 +59,7 @@ class Actor:
         Returns:
             int: the health ratio, or -1 if not available
         """
-        return self.actor_instance.getHealthRatio()
+        return self.instance.getHealthRatio()
 
     def get_health_scale(self) -> int:
         """
@@ -68,8 +68,9 @@ class Actor:
         Returns:
             int: the health scale, or -1 if not available
         """
-        return self.actor_instance.getHealthScale()
+        return self.instance.getHealthScale()
 
+    @wrap_getter(WorldPoint)
     def get_world_location(self) -> WorldPoint:
         """
         Gets the server-side location of the actor.
@@ -77,7 +78,7 @@ class Actor:
         Returns:
             WorldPoint: the server location
         """
-        return self.actor_instance.getWorldLocation()
+        return self.instance.getWorldLocation()
 
     @wrap_getter(LocalPoint)
     def get_local_location(self) -> LocalPoint:
@@ -87,7 +88,7 @@ class Actor:
         Returns:
             LocalPoint: the client location
         """
-        return self.actor_instance.getLocalLocation()
+        return self.instance.getLocalLocation()
 
     def get_orientation(self) -> int:
         """
@@ -96,7 +97,7 @@ class Actor:
         Returns:
             int: the orientation
         """
-        return self.actor_instance.getOrientation()
+        return self.instance.getOrientation()
 
     def get_current_orientation(self) -> int:
         """
@@ -105,7 +106,7 @@ class Actor:
         Returns:
             int: the current orientation
         """
-        return self.actor_instance.getCurrentOrientation()
+        return self.instance.getCurrentOrientation()
 
     def get_animation(self) -> int:
         """
@@ -114,7 +115,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getAnimation()
+        return self.instance.getAnimation()
 
     def set_animation(self, animation: int):
         """
@@ -123,7 +124,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setAnimation(animation)
+        self.instance.setAnimation(animation)
 
     def get_pose_animation(self) -> int:
         """
@@ -132,7 +133,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getPoseAnimation()
+        return self.instance.getPoseAnimation()
 
     def set_pose_animation(self, animation: int):
         """
@@ -141,7 +142,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setPoseAnimation(animation)
+        self.instance.setPoseAnimation(animation)
 
     def get_idle_pose_animation(self) -> int:
         """
@@ -150,7 +151,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getIdlePoseAnimation()
+        return self.instance.getIdlePoseAnimation()
 
     def set_idle_pose_animation(self, animation: int):
         """
@@ -159,7 +160,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setIdlePoseAnimation(animation)
+        self.instance.setIdlePoseAnimation(animation)
 
     def get_idle_rotate_left(self) -> int:
         """
@@ -168,7 +169,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getIdleRotateLeft()
+        return self.instance.getIdleRotateLeft()
     
     def set_idle_rotate_left(self, animation: int):
         """
@@ -177,7 +178,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setIdleRotateLeft(animation)
+        self.instance.setIdleRotateLeft(animation)
     
     def get_idle_rotate_right(self) -> int:
         """
@@ -186,7 +187,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getIdleRotateRight()
+        return self.instance.getIdleRotateRight()
     
     def set_idle_rotate_right(self, animation: int):
         """
@@ -195,7 +196,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setIdleRotateRight(animation)
+        self.instance.setIdleRotateRight(animation)
     
     def get_walk_animation(self) -> int:
         """
@@ -204,7 +205,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getWalkAnimation()
+        return self.instance.getWalkAnimation()
     
     def set_walk_animation(self, animation: int):
         """
@@ -213,7 +214,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setWalkAnimation(animation)
+        self.instance.setWalkAnimation(animation)
 
     def get_walk_rotate_left(self) -> int:
         """
@@ -222,7 +223,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getWalkRotateLeft()
+        return self.instance.getWalkRotateLeft()
     
     def set_walk_rotate_left(self, animation: int):
         """
@@ -231,7 +232,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setWalkRotateLeft(animation)
+        self.instance.setWalkRotateLeft(animation)
     
     def get_walk_rotate_right(self) -> int:
         """
@@ -240,7 +241,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getWalkRotateRight()
+        return self.instance.getWalkRotateRight()
     
     def set_walk_rotate_right(self, animation: int):
         """
@@ -249,7 +250,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setWalkRotateRight(animation)
+        self.instance.setWalkRotateRight(animation)
     
     
     def get_walk_rotate_180(self) -> int:
@@ -259,7 +260,7 @@ class Actor:
         Returns:
             int: the animation ID
         """
-        return self.actor_instance.getWalkRotate180()
+        return self.instance.getWalkRotate180()
     
     def set_walk_rotate_180(self, animation: int):
         """
@@ -268,7 +269,7 @@ class Actor:
         Args:
             animation (int): the animation ID
         """
-        self.actor_instance.setWalkRotate180(animation)
+        self.instance.setWalkRotate180(animation)
     
     def get_animation_frame(self) -> int:
         """
@@ -277,7 +278,7 @@ class Actor:
         Returns:
             int: the animation frame
         """
-        return self.actor_instance.getAnimationFrame()
+        return self.instance.getAnimationFrame()
     
     def set_animation_frame(self, frame: int):
         """
@@ -286,7 +287,7 @@ class Actor:
         Args:
             frame (int): the animation frame
         """
-        self.actor_instance.setAnimationFrame(frame)
+        self.instance.setAnimationFrame(frame)
     
     def get_convex_hull(self):
         """
@@ -295,7 +296,7 @@ class Actor:
         Returns:
             Shape: the convex hull
         """
-        return self.actor_instance.getConvexHull()
+        return self.instance.getConvexHull()
     
     def get_world_area(self):
         """
@@ -304,7 +305,7 @@ class Actor:
         Returns:
             WorldArea: the world area
         """
-        return self.actor_instance.getWorldArea()
+        return self.instance.getWorldArea()
     
     def get_overhead_text(self) -> str:
         """
@@ -313,7 +314,7 @@ class Actor:
         Returns:
             str: the overhead text
         """
-        return self.actor_instance.getOverheadText()
+        return self.instance.getOverheadText()
     
     def is_dead(self) -> bool:
         """
@@ -322,4 +323,4 @@ class Actor:
         Returns:
             bool: True if dead, False otherwise
         """
-        return self.actor_instance.isDead()
+        return self.instance.isDead()

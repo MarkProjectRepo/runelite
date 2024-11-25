@@ -21,6 +21,7 @@ class Player(Actor):  # Inherit from Actor
 
     def __init__(self, player_instance):
         super().__init__(player_instance)
+        self.instance = player_instance
 
     def get_id(self) -> int:
         """
@@ -29,7 +30,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             int: the ID of the player
         """
-        return self.player_instance.getId()
+        return self.instance.getId()
 
     def get_combat_level(self) -> int:
         """
@@ -38,7 +39,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             int: the combat level of the player
         """
-        return self.player_instance.getCombatLevel()
+        return self.instance.getCombatLevel()
 
     def get_player_composition(self):
         """
@@ -47,7 +48,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             PlayerComposition: the composition of the player
         """
-        return self.player_instance.getPlayerComposition()
+        return self.instance.getPlayerComposition()
 
     def get_polygons(self):
         """
@@ -56,7 +57,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             list of Polygon: the model polygons
         """
-        return self.player_instance.getPolygons()
+        return self.instance.getPolygons()
 
     def get_team(self) -> int:
         """
@@ -65,7 +66,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             int: team number, or 0 if not on any team
         """
-        return self.player_instance.getTeam()
+        return self.instance.getTeam()
 
     def is_friends_chat_member(self) -> bool:
         """
@@ -74,7 +75,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             bool: True if the player is a friends chat member, False otherwise
         """
-        return self.player_instance.isFriendsChatMember()
+        return self.instance.isFriendsChatMember()
 
     def is_friend(self) -> bool:
         """
@@ -83,7 +84,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             bool: True if the player is a friend, False otherwise
         """
-        return self.player_instance.isFriend()
+        return self.instance.isFriend()
 
     def is_clan_member(self) -> bool:
         """
@@ -92,7 +93,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             bool: True if the player is a clan member, False otherwise
         """
-        return self.player_instance.isClanMember()
+        return self.instance.isClanMember()
 
     def get_overhead_icon(self):
         """
@@ -101,7 +102,7 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             HeadIcon: the overhead icon
         """
-        return self.player_instance.getOverheadIcon()
+        return self.instance.getOverheadIcon()
 
     def get_skull_icon(self):
         """
@@ -110,4 +111,4 @@ class Player(Actor):  # Inherit from Actor
         Returns:
             SkullIcon: the skull icon, or None if not applicable
         """
-        return self.player_instance.getSkullIcon()
+        return self.instance.getSkullIcon()

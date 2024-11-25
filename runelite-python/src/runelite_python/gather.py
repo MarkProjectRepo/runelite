@@ -7,7 +7,6 @@ from runelite_python.java.api.npc import NPC
 from runelite_python.java.api.ids.id import IDManager
 from runelite_python.collection.scene import get_scene_ground_objects
 from runelite_python.java.screenshot import get_screenshot
-from runelite_python.java.api.prayer import Prayer
 
 from typing import List
 class Gather:
@@ -39,7 +38,6 @@ if __name__ == "__main__":
         
         click_queue = gather.get_click_queue()
         print("First: ", {(obj.get_name(), obj.get_id(), obj.get_id()) for obj in click_queue.iterator(NPC)})
-        print(client.is_prayer_active(client.get_prayer_enum().THICK_SKIN))
         # print("First: ", {(obj.get_name(), obj.get_id(), tuple(gather.id_manager.identify_id(obj.get_id()))) for obj in click_queue.iterator(NPC)})
         click_queue.clear()
         # scene_objects = get_scene_ground_objects(scene, gather.world_view.get_plane())

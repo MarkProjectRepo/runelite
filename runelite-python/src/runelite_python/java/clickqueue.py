@@ -1,3 +1,6 @@
+from typing import Iterator
+from runelite_python.java.api.actor import Actor
+
 class ClickQueue:
     def __init__(self, click_queue_instance):
         self.click_queue = click_queue_instance
@@ -20,5 +23,5 @@ class ClickQueue:
         else:
             return [object_type(obj) for obj in self.click_queue.iterator()]
     
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Actor]:
         return self.click_queue.iterator()

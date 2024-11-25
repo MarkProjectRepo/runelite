@@ -19,6 +19,7 @@ def wrap_getter(wrapper_class):
 def wrap_iterator(wrapper_class):
     """
     A decorator to wrap the return type of a function that returns an iterator into a specified class.
+    Handles arbitrary nesting of iterables.
 
     Args:
         wrapper_class (type): The class to wrap the return type with.
@@ -28,9 +29,22 @@ def wrap_iterator(wrapper_class):
     """
     def decorator(func):
         def wrapper(*args, **kwargs):
+            def wrap_nested(obj):
+                # Handle Java iterators/iterables more carefully
+                if hasattr(obj, 'iterator'):
+                    try:
+                        obj = obj.iterator()
+                    except Exception:
+                        # If iterator() fails, try treating it as a regular iterable
+                        pass
+                
+                # Check if object is iterable (but not string)
+                if hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes)):
+                    return [wrap_nested(item) for item in obj]
+                # Base case: wrap individual object
+                return wrapper_class(obj)
+            
             result = func(*args, **kwargs)
-            if "iterator" in dir(result):
-                return [wrapper_class(obj) for obj in result.iterator()]
-            return [wrapper_class(obj) for obj in result]
+            return wrap_nested(result)
         return wrapper
     return decorator

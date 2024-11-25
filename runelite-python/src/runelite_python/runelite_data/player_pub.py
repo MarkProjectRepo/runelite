@@ -3,29 +3,23 @@ from runelite_python.java.api.player import Player
 from runelite_python.java.api.actor import Actor
 
 class PlayerPublisher(Publisher):
-    def __init__(self, player: Player, publisher_name: str = None):
-        super().__init__()
+    def __init__(self, player: Player, publisher_name: str = None, delay=1):
+        super().__init__(delay)
         self.player = player
         self.publisher_name = publisher_name if publisher_name else player.__class__.__name__
     
-    def prepare_message(self):
+    def get_message(self):
         return {
-            "combat_level": self.get_combat_level(),
-            "is_dead": self.is_player_dead(),
-            "is_interacting": self.is_player_interacting(),
-            "interacting_actor": self.get_interacting_actor(),
-            "health_ratio": self.get_health_ratio(),
-            "health_scale": self.get_health_scale(),
-            "world_location": self.get_world_location(),
-            "overhead_text": self.get_overhead_text(),
-        }
-    
-    def publish(self):
-        message = self.prepare_message()
+                "combat_level": self.player.get_combat_level(),
+                "is_dead": self.player.is_dead(),
+                "is_interacting": self.player.is_interacting(),
+                "interacting_actor": self.player.get_interacting(),
+                "health_ratio": self.player.get_health_ratio(),
+                "health_scale": self.player.get_health_scale(),
+                "world_location": (self.player.get_world_location().get_x(), self.player.get_world_location().get_y()),
+                "overhead_text": self.player.get_overhead_text(),
+            }
 
-        for subscriber in self._subscribers:
-            subscriber.update(message)
-    
     def get_combat_level(self):
         """Returns the combat level of the player."""
         return self.player.get_combat_level()

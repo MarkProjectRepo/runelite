@@ -1,6 +1,7 @@
 from runelite_python.java.api.gameobject import GameObject
 from runelite_python.java.api.groundobject import GroundObject
 from runelite_python.java.helpers import wrap_iterator, wrap_getter
+# from runelite_python.java.api.item import Item
 
 class Tile:
     def __init__(self, instance):
@@ -52,6 +53,7 @@ class Tile:
     def get_render_level(self):
         return self.instance.getRenderLevel()
 
+    # @wrap_iterator(Item)
     def get_ground_items(self):
         return self.instance.getGroundItems()
 

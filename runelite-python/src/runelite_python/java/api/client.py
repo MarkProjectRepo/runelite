@@ -8,9 +8,9 @@ from runelite_python.java.api.tile import Tile
 from runelite_python.java.api.world_view import WorldView
 from runelite_python.java.api.world import World
 from runelite_python.java.api.grandexchange import GrandExchangeOffer
-from runelite_python.java.api.prayer import Prayer
 from runelite_python.java.api.coord.localpoint import LocalPoint
 from runelite_python.java.api.coord.worldpoint import WorldPoint
+from runelite_python.java.helpers import wrap_getter
 
 class Client:
     """
@@ -2786,6 +2786,7 @@ class Client:
         """
         return self.client_instance.getMapRegions()
 
+    @wrap_getter(Scene)
     def get_scene(self) -> Scene:
         """
         Gets the current scene.

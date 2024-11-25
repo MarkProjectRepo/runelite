@@ -11,7 +11,7 @@ class Scene:
             if callable(getattr(instance, attr)) and not attr.startswith("__"):
                 setattr(self, attr, getattr(instance, attr))
 
-
+    @wrap_iterator(Tile)
     def get_tiles(self) -> List[List[List[Tile]]]:
         """
         Gets the tiles in the scene.
@@ -37,6 +37,20 @@ class Scene:
         middle_y = len(tiles[0]) // 2
         limited_tiles = [row[max(0, middle_y - limit // 2):middle_y + limit // 2] for row in tiles[max(0, middle_x - limit // 2):middle_x + limit // 2]]
         return [[Tile(tile) for tile in row] for row in limited_tiles]
+    
+    def get_tiles_with_objects(self):
+        """
+        Gets the tiles with objects in the scene.
+        """
+        tiles = self.get_tiles()[0]
+        return sum([[tile for tile in row if tile.get_game_objects()] for row in tiles], [])
+    
+    def get_tiles_with_ground_items(self):
+        """
+        Gets the tiles with ground items in the scene.
+        """
+        tiles = self.get_tiles()[0]
+        return sum([[tile for tile in row if tile.get_ground_items()] for row in tiles], [])
 
     def get_extended_tiles(self):
         return self.instance.getExtendedTiles()
