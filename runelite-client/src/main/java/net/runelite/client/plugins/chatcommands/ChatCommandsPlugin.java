@@ -107,7 +107,7 @@ import org.apache.commons.text.WordUtils;
 @Slf4j
 public class ChatCommandsPlugin extends Plugin
 {
-	private static final Pattern KILLCOUNT_PATTERN = Pattern.compile("Your (?<pre>completion count for |subdued |completed )?(?<boss>.+?) (?<post>(?:(?:kill|harvest|lap|completion) )?(?:count )?)is: <col=[0-9a-f]{6}>(?<kc>[0-9,]+)</col>");
+	private static final Pattern KILLCOUNT_PATTERN = Pattern.compile("Your (?<pre>completion count for |subdued |completed )?(?:<col=[0-9a-f]{6}>)?(?<boss>.+?)(?:</col>)? (?<post>(?:(?:kill|harvest|lap|completion) )?(?:count )?)is: ?<col=[0-9a-f]{6}>(?<kc>[0-9,]+)</col>");
 	private static final String TEAM_SIZES = "(?<teamsize>\\d+(?:\\+|-\\d+)? players?|Solo)";
 	private static final Pattern RAIDS_PB_PATTERN = Pattern.compile("<col=ef20ff>Congratulations - your raid is complete!</col><br>Team size: <col=ff0000>" + TEAM_SIZES + "</col> Duration:</col> <col=ff0000>(?<pb>[0-9:]+(?:\\.[0-9]+)?)</col> \\(new personal best\\)</col>");
 	private static final Pattern RAIDS_DURATION_PATTERN = Pattern.compile("<col=ef20ff>Congratulations - your raid is complete!</col><br>Team size: <col=ff0000>" + TEAM_SIZES + "</col> Duration:</col> <col=ff0000>[0-9:.]+</col> Personal best: </col><col=ff0000>(?<pb>[0-9:]+(?:\\.[0-9]+)?)</col>");
@@ -955,7 +955,8 @@ public class ChatCommandsPlugin extends Plugin
 		return true;
 	}
 
-	private void killCountLookup(ChatMessage chatMessage, String message)
+	@VisibleForTesting
+	void killCountLookup(ChatMessage chatMessage, String message)
 	{
 		if (!config.killcount())
 		{
@@ -2121,7 +2122,14 @@ public class ChatCommandsPlugin extends Plugin
 
 	private static String longBossName(String boss)
 	{
-		switch (boss.toLowerCase())
+		String lowerBoss = boss.toLowerCase();
+		if (lowerBoss.endsWith(" (echo)"))
+		{
+			String actualBoss = lowerBoss.substring(0, lowerBoss.length() - " (echo)".length());
+			return longBossName(actualBoss) + " (Echo)";
+		}
+
+		switch (lowerBoss)
 		{
 			case "corp":
 				return "Corporeal Beast";
@@ -2496,6 +2504,26 @@ public class ChatCommandsPlugin extends Plugin
 			case "hs5":
 			case "hs 5":
 				return "Hallowed Sepulchre Floor 5";
+
+			// Colossal Wyrm Basic Agility Course
+			case "wbac":
+			case "cwbac":
+			case "wyrmb":
+			case "wyrmbasic":
+			case "wyrm basic":
+			case "colossal basic":
+			case "colossal wyrm basic":
+				return "Colossal Wyrm Agility Course (Basic)";
+
+			// Colossal Wyrm Advanced Agility Course
+			case "waac":
+			case "cwaac":
+			case "wyrma":
+			case "wyrmadvanced":
+			case "wyrm advanced":
+			case "colossal advanced":
+			case "colossal wyrm advanced":
+				return "Colossal Wyrm Agility Course (Advanced)";
 
 			// Prifddinas Agility Course
 			case "prif":
