@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.aaa;
+package net.runelite.client.plugins.Py4j;
 
 import net.runelite.client.RuneLite;
 import net.runelite.api.Client;

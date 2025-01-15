@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.aaa;
+package net.runelite.client.plugins.Py4j;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -35,13 +35,13 @@ import net.runelite.client.input.MouseAdapter;
 import net.runelite.api.IndexedObjectSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class aaaInputListener extends MouseAdapter implements KeyListener
+public class Py4jInputListener extends MouseAdapter implements KeyListener
 {
 	private final Client client;
 	private ConcurrentLinkedQueue<Renderable> clickQueue;
 
 	@Inject
-	private aaaInputListener(Client client, ConcurrentLinkedQueue<Renderable> clickQueue)
+	private Py4jInputListener(Client client, ConcurrentLinkedQueue<Renderable> clickQueue)
 	{
 		this.client = client;
 		this.clickQueue = clickQueue;

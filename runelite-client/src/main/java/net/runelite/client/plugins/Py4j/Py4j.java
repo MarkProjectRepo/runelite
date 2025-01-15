@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.aaa;
+package net.runelite.client.plugins.Py4j;
 
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -40,13 +40,13 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.Py4j.KeyEvents;
 import net.runelite.client.ui.ClientUI;
 import py4j.GatewayServer;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import net.runelite.client.RuneLite;
 import net.runelite.client.chat.ChatCommandManager;
-import net.runelite.client.plugins.aaa.KeyEvents;
 
 
 @PluginDescriptor(
@@ -56,10 +56,10 @@ import net.runelite.client.plugins.aaa.KeyEvents;
 )
 
 @Slf4j
-public class NotAgility extends Plugin
+public class Py4j extends Plugin
 {
 	@Inject
-	private aaaInputListener inputListener;
+	private Py4jInputListener inputListener;
 
 	@Inject
 	private MouseManager mouseManager;
