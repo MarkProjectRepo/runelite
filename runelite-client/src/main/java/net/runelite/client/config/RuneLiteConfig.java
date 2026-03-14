@@ -29,7 +29,6 @@ import java.awt.Dimension;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.runelite.api.Constants;
-import net.runelite.client.Notifier;
 import net.runelite.client.ui.ContainableFrame;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
 import net.runelite.client.util.OSType;
@@ -229,9 +228,9 @@ public interface RuneLiteConfig extends Config
 		position = 23,
 		section = notificationSettings
 	)
-	default Notifier.NativeCustomOff notificationSound()
+	default NotificationSound notificationSound()
 	{
-		return Notifier.NativeCustomOff.NATIVE;
+		return NotificationSound.NATIVE;
 	}
 
 	@Range(
@@ -316,11 +315,11 @@ public interface RuneLiteConfig extends Config
 	@ConfigItem(
 		keyName = "fontType",
 		name = "Dynamic overlay font",
-		description = "Configures what font type is used for in-game overlays such as player name, ground items, etc.",
+		description = "Configures what font is used for in-game overlays such as player name, ground items, etc.",
 		position = 30,
 		section = overlaySettings
 	)
-	default FontType fontType()
+	default FontType dynamicOverlayFont()
 	{
 		return FontType.SMALL;
 	}
@@ -328,11 +327,11 @@ public interface RuneLiteConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipFontType",
 		name = "Tooltip font",
-		description = "Configures what font type is used for in-game tooltips such as food stats, NPC names, etc.",
+		description = "Configures what font is used for in-game tooltips such as food stats, NPC names, etc.",
 		position = 31,
 		section = overlaySettings
 	)
-	default FontType tooltipFontType()
+	default FontType tooltipFont()
 	{
 		return FontType.SMALL;
 	}
@@ -340,11 +339,11 @@ public interface RuneLiteConfig extends Config
 	@ConfigItem(
 		keyName = "interfaceFontType",
 		name = "Interface font",
-		description = "Configures what font type is used for in-game interface overlays such as panels, opponent info, clue scrolls etc.",
+		description = "Configures what font is used for in-game interface overlays such as panels, opponent info, clue scrolls etc.",
 		position = 32,
 		section = overlaySettings
 	)
-	default FontType interfaceFontType()
+	default FontType interfaceFont()
 	{
 		return FontType.REGULAR;
 	}
@@ -352,11 +351,11 @@ public interface RuneLiteConfig extends Config
 	@ConfigItem(
 		keyName = "infoboxFontType",
 		name = "Infobox font",
-		description = "Configures what font type is used for infoboxes.",
+		description = "Configures what font is used for infoboxes.",
 		position = 33,
 		section = overlaySettings
 	)
-	default FontType infoboxFontType()
+	default FontType infoboxFont()
 	{
 		return FontType.REGULAR;
 	}

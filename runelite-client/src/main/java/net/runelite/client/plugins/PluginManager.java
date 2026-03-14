@@ -62,7 +62,6 @@ import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.config.Config;
@@ -97,9 +96,6 @@ public class PluginManager
 	private final Provider<GameEventManager> sceneTileManager;
 	private final List<Plugin> plugins = new CopyOnWriteArrayList<>();
 	private final List<Plugin> activePlugins = new CopyOnWriteArrayList<>();
-
-	@Setter
-	boolean isOutdated;
 
 	@Inject
 	@VisibleForTesting
@@ -243,7 +239,6 @@ public class PluginManager
 					catch (PluginInstantiationException ex)
 					{
 						log.error("Unable to start plugin {}", plugin.getClass().getSimpleName(), ex);
-						plugins.remove(plugin);
 					}
 				});
 			}
@@ -339,11 +334,6 @@ public class PluginManager
 				continue;
 			}
 
-			if (!pluginDescriptor.loadWhenOutdated() && isOutdated)
-			{
-				continue;
-			}
-
 			if (pluginDescriptor.developerPlugin() && !developerMode)
 			{
 				continue;
@@ -353,8 +343,9 @@ public class PluginManager
 			{
 				log.debug("Disabling {} due to safe mode", clazz);
 				// also disable the plugin from autostarting later
-				configManager.unsetConfiguration(RuneLiteConfig.GROUP_NAME,
-					(Strings.isNullOrEmpty(pluginDescriptor.configName()) ? clazz.getSimpleName() : pluginDescriptor.configName()).toLowerCase());
+				configManager.setConfiguration(RuneLiteConfig.GROUP_NAME,
+					(Strings.isNullOrEmpty(pluginDescriptor.configName()) ? clazz.getSimpleName() : pluginDescriptor.configName()).toLowerCase(),
+					false);
 				continue;
 			}
 
@@ -438,7 +429,7 @@ public class PluginManager
 			plugin.startUp();
 
 			log.debug("Plugin {} is now running", plugin.getClass().getSimpleName());
-			if (!isOutdated && sceneTileManager != null)
+			if (sceneTileManager != null)
 			{
 				final GameEventManager gameEventManager = this.sceneTileManager.get();
 				if (gameEventManager != null)
@@ -457,6 +448,15 @@ public class PluginManager
 		}
 		catch (Throwable ex)
 		{
+			// stop the plugin and fire the change event to update the plugin list panel
+			try
+			{
+				stopPlugin(plugin);
+			}
+			catch (Throwable ex2)
+			{
+				log.error("unable to stop plugin", ex2);
+			}
 			throw new PluginInstantiationException(ex);
 		}
 
@@ -510,12 +510,27 @@ public class PluginManager
 		}
 	}
 
+	/**
+	 * Test if a plugin is enabled, which causes the client to attempt to start it on boot
+	 * @param plugin
+	 * @return
+	 */
 	public boolean isPluginEnabled(Plugin plugin)
 	{
 		final PluginDescriptor pluginDescriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
 		final String keyName = Strings.isNullOrEmpty(pluginDescriptor.configName()) ? plugin.getClass().getSimpleName() : pluginDescriptor.configName();
 		final String value = configManager.getConfiguration(RuneLiteConfig.GROUP_NAME, keyName.toLowerCase());
 		return value != null ? Boolean.parseBoolean(value) : pluginDescriptor.enabledByDefault();
+	}
+
+	/**
+	 * Test if a plugin is on, eg. enabled and also was started successfully
+	 * @param plugin
+	 * @return
+	 */
+	public boolean isPluginActive(Plugin plugin)
+	{
+		return activePlugins.contains(plugin);
 	}
 
 	private Plugin instantiate(List<Plugin> scannedPlugins, Class<Plugin> clazz) throws PluginInstantiationException

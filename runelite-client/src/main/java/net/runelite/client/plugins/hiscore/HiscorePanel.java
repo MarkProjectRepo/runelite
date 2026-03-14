@@ -52,7 +52,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Experience;
 import net.runelite.api.Player;
-import static net.runelite.api.SpriteID.TAB_COMBAT;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -89,7 +89,7 @@ public class HiscorePanel extends PluginPanel
 		PRAYER, CRAFTING, FIREMAKING,
 		MAGIC, FLETCHING, WOODCUTTING,
 		RUNECRAFT, SLAYER, FARMING,
-		CONSTRUCTION, HUNTER
+		CONSTRUCTION, HUNTER, SAILING
 	);
 
 	/**
@@ -98,31 +98,32 @@ public class HiscorePanel extends PluginPanel
 	private static final List<HiscoreSkill> BOSSES = ImmutableList.of(
 		ABYSSAL_SIRE, ALCHEMICAL_HYDRA, AMOXLIATL,
 		ARAXXOR, ARTIO, BARROWS_CHESTS,
-		BRYOPHYTA, CALLISTO, CALVARION,
-		CERBERUS, CHAMBERS_OF_XERIC, CHAMBERS_OF_XERIC_CHALLENGE_MODE,
-		CHAOS_ELEMENTAL, CHAOS_FANATIC, COMMANDER_ZILYANA,
-		CORPOREAL_BEAST, CRAZY_ARCHAEOLOGIST, DAGANNOTH_PRIME,
-		DAGANNOTH_REX, DAGANNOTH_SUPREME, DERANGED_ARCHAEOLOGIST,
-		DUKE_SUCELLUS, GENERAL_GRAARDOR, GIANT_MOLE,
-		GROTESQUE_GUARDIANS, HESPORI, KALPHITE_QUEEN,
-		KING_BLACK_DRAGON, KRAKEN, KREEARRA,
-		KRIL_TSUTSAROTH, LUNAR_CHESTS, MIMIC,
-		NEX, NIGHTMARE, PHOSANIS_NIGHTMARE,
-		OBOR, PHANTOM_MUSPAH, SARACHNIS,
-		SCORPIA, SCURRIUS, SKOTIZO,
+		BRUTUS, BRYOPHYTA, CALLISTO,
+		CALVARION, CERBERUS, CHAMBERS_OF_XERIC,
+		CHAMBERS_OF_XERIC_CHALLENGE_MODE, CHAOS_ELEMENTAL, CHAOS_FANATIC,
+		COMMANDER_ZILYANA, CORPOREAL_BEAST, CRAZY_ARCHAEOLOGIST,
+		DAGANNOTH_PRIME, DAGANNOTH_REX, DAGANNOTH_SUPREME,
+		DERANGED_ARCHAEOLOGIST, DOOM_OF_MOKHAIOTL, DUKE_SUCELLUS,
+		GENERAL_GRAARDOR, GIANT_MOLE, GROTESQUE_GUARDIANS,
+		HESPORI, KALPHITE_QUEEN, KING_BLACK_DRAGON,
+		KRAKEN, KREEARRA, KRIL_TSUTSAROTH,
+		LUNAR_CHESTS, MIMIC, NEX,
+		NIGHTMARE, PHOSANIS_NIGHTMARE, OBOR,
+		PHANTOM_MUSPAH, SARACHNIS, SCORPIA,
+		SCURRIUS, SHELLBANE_GRYPHON, SKOTIZO,
 		SOL_HEREDIT, SPINDEL, TEMPOROSS,
 		THE_GAUNTLET, THE_CORRUPTED_GAUNTLET, THE_HUEYCOATL,
-		THE_LEVIATHAN, THE_WHISPERER, THEATRE_OF_BLOOD,
-		THEATRE_OF_BLOOD_HARD_MODE, THERMONUCLEAR_SMOKE_DEVIL, TOMBS_OF_AMASCUT,
-		TOMBS_OF_AMASCUT_EXPERT, TZKAL_ZUK, TZTOK_JAD,
-		VARDORVIS, VENENATIS, VETION,
-		VORKATH, WINTERTODT, ZALCANO,
-		ZULRAH
+		THE_LEVIATHAN, THE_ROYAL_TITANS, THE_WHISPERER,
+		THEATRE_OF_BLOOD, THEATRE_OF_BLOOD_HARD_MODE, THERMONUCLEAR_SMOKE_DEVIL,
+		TOMBS_OF_AMASCUT, TOMBS_OF_AMASCUT_EXPERT, TZKAL_ZUK,
+		TZTOK_JAD, VARDORVIS, VENENATIS,
+		VETION, VORKATH, WINTERTODT,
+		YAMA, ZALCANO, ZULRAH
 	);
 
 	private static final HiscoreEndpoint[] ENDPOINTS = {
 		HiscoreEndpoint.NORMAL, HiscoreEndpoint.IRONMAN, HiscoreEndpoint.HARDCORE_IRONMAN, HiscoreEndpoint.ULTIMATE_IRONMAN,
-		HiscoreEndpoint.DEADMAN, HiscoreEndpoint.PURE, HiscoreEndpoint.LEVEL_3_SKILLER, HiscoreEndpoint.LEAGUE
+		HiscoreEndpoint.DEADMAN, HiscoreEndpoint.PURE, HiscoreEndpoint.LEVEL_3_SKILLER, HiscoreEndpoint.TOURNAMENT
 	};
 
 	private final HiscorePlugin plugin;
@@ -243,8 +244,7 @@ public class HiscorePanel extends PluginPanel
 			tabGroup.addTab(tab);
 		}
 
-		// Default selected tab is normal hiscores
-		resetEndpoints();
+		tabGroup.select(tabGroup.getTab(0));
 
 		add(tabGroup, c);
 		c.gridy++;
@@ -276,9 +276,7 @@ public class HiscorePanel extends PluginPanel
 		c.gridy++;
 
 		JPanel minigamePanel = new JPanel();
-		// These aren't all on one row because when there's a label with four or more digits it causes the details
-		// panel to change its size for some reason...
-		minigamePanel.setLayout(new GridLayout(3, 3));
+		minigamePanel.setLayout(new GridLayout(0, 3));
 		minigamePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		minigamePanel.add(makeHiscorePanel(CLUE_SCROLL_ALL));
@@ -287,6 +285,7 @@ public class HiscorePanel extends PluginPanel
 		minigamePanel.add(makeHiscorePanel(SOUL_WARS_ZEAL));
 		minigamePanel.add(makeHiscorePanel(RIFTS_CLOSED));
 		minigamePanel.add(makeHiscorePanel(COLOSSEUM_GLORY));
+		minigamePanel.add(makeHiscorePanel(COLLECTIONS_LOGGED));
 		minigamePanel.add(makeHiscorePanel(BOUNTY_HUNTER_ROGUE));
 		minigamePanel.add(makeHiscorePanel(BOUNTY_HUNTER_HUNTER));
 		minigamePanel.add(makeHiscorePanel(PVP_ARENA_RANK));
@@ -332,7 +331,8 @@ public class HiscorePanel extends PluginPanel
 		label.setToolTipText(skill == null ? "Combat" : skill.getName());
 		label.setFont(FontManager.getRunescapeSmallFont());
 		label.setText(pad("--", skillType));
-		spriteManager.getSpriteAsync(skill == null ? TAB_COMBAT : skill.getSpriteId(), 0, (sprite) ->
+
+		spriteManager.getSpriteAsync(skill == null ? SpriteID.SideIcons.COMBAT : skill.getSpriteId(), 0, (sprite) ->
 			SwingUtilities.invokeLater(() ->
 			{
 				// Icons are all 25x25 or smaller, so they're fit into a 25x25 canvas to give them a consistent size for
@@ -475,7 +475,7 @@ public class HiscorePanel extends PluginPanel
 					level = s.getLevel();
 				}
 
-				if (level != -1)
+				if (level > 0)
 				{
 					label.setText(pad(formatLevel(level), skill.getType()));
 				}
@@ -549,6 +549,7 @@ public class HiscorePanel extends PluginPanel
 				case SOUL_WARS_ZEAL:
 				case RIFTS_CLOSED:
 				case COLOSSEUM_GLORY:
+				case COLLECTIONS_LOGGED:
 				{
 					content += buildMinigameTooltip(result.getSkill(skill), skill);
 					break;
@@ -603,10 +604,17 @@ public class HiscorePanel extends PluginPanel
 					}
 					else
 					{
-						Skill requestedSkill = result.getSkill(skill);
-						final long experience = requestedSkill.getExperience();
+						int rank = -1;
+						long experience = -1L;
 
-						String rank = (requestedSkill.getRank() == -1) ? "Unranked" : QuantityFormatter.formatNumber(requestedSkill.getRank());
+						Skill requestedSkill = result.getSkill(skill);
+						if (requestedSkill != null)
+						{
+							rank = requestedSkill.getRank();
+							experience = requestedSkill.getExperience();
+						}
+
+						String rankStr = (rank == -1) ? "Unranked" : QuantityFormatter.formatNumber(rank);
 						String exp = (experience == -1L) ? "Unranked" : QuantityFormatter.formatNumber(experience);
 						String remainingXp;
 						if (experience == -1L)
@@ -620,7 +628,7 @@ public class HiscorePanel extends PluginPanel
 						}
 
 						content += "<p><span style = 'color:white'>Skill:</span> " + skill.getName() + "</p>";
-						content += "<p><span style = 'color:white'>Rank:</span> " + rank + "</p>";
+						content += "<p><span style = 'color:white'>Rank:</span> " + rankStr + "</p>";
 						content += "<p><span style = 'color:white'>Experience:</span> " + exp + "</p>";
 						content += "<p><span style = 'color:white'>Remaining XP:</span> " + remainingXp + "</p>";
 					}
@@ -632,10 +640,10 @@ public class HiscorePanel extends PluginPanel
 		// Add a html progress bar to the hover information
 		if (skill != null && skill.getType() == HiscoreSkillType.SKILL)
 		{
-			long experience = result.getSkill(skill).getExperience();
-			if (experience >= 0)
+			Skill hiscoreSkill = result.getSkill(skill);
+			if (hiscoreSkill != null && hiscoreSkill.getExperience() >= 0)
 			{
-				int currentXp = (int) experience;
+				int currentXp = (int) hiscoreSkill.getExperience();
 				int currentLevel = Experience.getLevelForXp(currentXp);
 				int xpForCurrentLevel = Experience.getXpForLevel(currentLevel);
 				int xpForNextLevel = currentLevel + 1 <= Experience.MAX_VIRT_LEVEL ? Experience.getXpForLevel(currentLevel + 1) : -1;
@@ -685,14 +693,6 @@ public class HiscorePanel extends PluginPanel
 	private static String sanitize(String lookup)
 	{
 		return lookup.replace('\u00A0', ' ');
-	}
-
-	private void resetEndpoints()
-	{
-		// Select the correct tab based on the world type.
-		HiscoreEndpoint endpoint = plugin.getWorldEndpoint();
-		int idx = ArrayUtils.indexOf(ENDPOINTS, endpoint);
-		tabGroup.select(tabGroup.getTab(idx));
 	}
 
 	@VisibleForTesting

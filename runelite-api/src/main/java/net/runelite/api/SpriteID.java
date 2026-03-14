@@ -25,8 +25,7 @@
  */
 package net.runelite.api;
 
-// Note: This class won't always be complete: these sprites were manually gathered
-// through the cache and widget inspector. Please add new sprites as you happen to use them.
+@Deprecated
 public final class SpriteID
 {
 	public static final int RS2_CHATBOX_BUTTONS = 0;
@@ -1341,10 +1340,12 @@ public final class SpriteID
 	/* Unmapped: 1419 */
 	public static final int PRAYER_RIGOUR = 1420;
 	public static final int PRAYER_AUGURY = 1421;
-	/* Unmapped: 1422, 1423 */
+	public static final int PRAYER_DEADEYE = 1422;
+	public static final int PRAYER_MYSTIC_VIGOUR = 1423;
 	public static final int PRAYER_RIGOUR_DISABLED = 1424;
 	public static final int PRAYER_AUGURY_DISABLED = 1425;
-	/* Unmapped: 1426, 1427 */
+	public static final int PRAYER_DEADEYE_DISABLED = 1426;
+	public static final int PRAYER_MYSTIC_VIGOUR_DISABLED = 1427;
 	public static final int UNKNOWN_BLACK_ANTICLOCKWISE_ARROW_SHADOWED = 1428;
 	public static final int UNKNOWN_BLACK_ANTICLOCKWISE_ARROW = 1429;
 	public static final int YELLOW_CLICK_ANIMATION_1_1430 = 1430;
@@ -1724,7 +1725,8 @@ public final class SpriteID
 	public static final int HEALTHBAR_PURPLE_BACK_160PX = 4727;
 	/* Unmapped: 4728~4765 */
 	public static final int COLOSSEUM_DOOM = 4766;
-	/* Unmapped: 4767~4770 */
+	public static final int BURN_DAMAGE = 4767;
+	/* Unmapped: 4768~4770 */
 	public static final int HEALTHBAR_GREEN_FRONT_30PX = 4771;
 	public static final int HEALTHBAR_GREEN_BACK_30PX = 4772;
 	public static final int HEALTHBAR_GREEN_FRONT_40PX = 4773;
@@ -1833,4 +1835,9 @@ public final class SpriteID
 	public static final int HISCORE_COLOSSEUM_GLORY = 5862;
 	public static final int HEALTHBAR_LAST_STAND_FRONT = 5863;
 	public static final int HEALTHBAR_LAST_STAND_BACK = 5864;
+	/* Unmapped: 5865~6344 */
+	public static final int HISCORE_ROYAL_TITANS = 6345;
+	public static final int HISCORE_YAMA = 6346;
+	/* Unmapped: 6347~6389 */
+	public static final int HISCORE_COLLECTIONS_LOGGED = 6390;
 }

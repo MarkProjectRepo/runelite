@@ -27,14 +27,15 @@ package net.runelite.api;
 /**
  * Server controlled "content-developer" integers.
  *
- * @see VarPlayer
+ * @see net.runelite.api.gameval.VarPlayerID
  * <p>
- * These differ from a {@link VarPlayer} in that VarBits can be
+ * These differ from a {@link net.runelite.api.gameval.VarPlayerID} in that VarBits can be
  * less than 32 bits. One or more VarBits can be assigned to a
  * backing VarPlayer, each with a static range of bits that it is
  * allowed to access. This allows a more compact representation
  * of small values, like booleans
  */
+@Deprecated
 public final class Varbits
 {
 	/*
@@ -138,6 +139,9 @@ public final class Varbits
 	public static final int RUNE_POUCH_AMOUNT5 = 15375;
 	public static final int RUNE_POUCH_AMOUNT6 = 15376;
 
+	public static final int PRAYER_DEADEYE_UNLOCKED = 16097;
+	public static final int PRAYER_MYSTIC_VIGOUR_UNLOCKED = 16098;
+
 	/**
 	 * Prayers
 	 */
@@ -171,6 +175,8 @@ public final class Varbits
 	public static final int PRAYER_PRESERVE = 5466;
 	public static final int PRAYER_RIGOUR = 5464;
 	public static final int PRAYER_AUGURY = 5465;
+	public static final int PRAYER_DEADEYE = 16090;
+	public static final int PRAYER_MYSTIC_VIGOUR = 16091;
 
 	/**
 	 * Ruinous Powers
@@ -400,8 +406,6 @@ public final class Varbits
 	 */
 	public static final int IN_RAID = 5432;
 	public static final int TOTAL_POINTS = 5431;
-	public static final int PERSONAL_POINTS = 5422;
-	public static final int RAID_PARTY_SIZE = 5424;
 
 	// 0 = raid not started, >0 = raid started
 	public static final int RAID_STATE = 5425;
@@ -638,6 +642,7 @@ public final class Varbits
 	public static final int BANK_QUANTITY_TYPE = 6590;
 	public static final int BANK_REQUESTEDQUANTITY = 3960;
 	public static final int BANK_LEAVEPLACEHOLDERS = 3755;
+	public static final int BANK_ITEM_OPTIONS = 16125;
 
 	public static final int WORLDHOPPER_FAVORITE_1 = 4597;
 	public static final int WORLDHOPPER_FAVORITE_2 = 4598;
@@ -969,7 +974,30 @@ public final class Varbits
 	public static final int COMBAT_TASK_MASTER = 12889;
 	public static final int COMBAT_TASK_GRANDMASTER = 12890;
 
+	public static final int LEPRECHAUNS_LUCK = 15344;
+
 	public static final int LEAGUES_MELEE_COMBAT_MASTERY_LEVEL = 11580;
 	public static final int LEAGUES_RANGED_COMBAT_MASTERY_LEVEL = 11581;
 	public static final int LEAGUES_MAGIC_COMBAT_MASTERY_LEVEL = 11582;
+
+	/**
+	 * The slayer master which is present at Burthorpe.
+	 * <p>
+	 * 0 = Turael
+	 * 1, 2 = Aya
+	 * 3 = Null
+	 */
+	public static final int BURTHORPE_SLAYER_MASTER = 10782;
+
+	/**
+	 * The state of Jarvis' gravestone.
+	 * <p>
+	 * 0, 2, 3 = Bush (eg. saved Jarvis, or did not partake in the 2017 Halloween event)
+	 * 1 = Gravestone
+	 *
+	 * @see <a href="https://oldschool.runescape.wiki/w/Gravestone_(Jarvis)">Gravestone (Jarvis) - OSRS Wiki</a>
+	 */
+	public static final int JARVIS_GRAVESTONE = 6008;
+
+	public static final int IN_LMS = 5314;
 }

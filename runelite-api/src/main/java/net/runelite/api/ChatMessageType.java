@@ -194,6 +194,14 @@ public enum ChatMessageType
 	 */
 	NPC_SAY(116),
 	/**
+	 * Did you know?-es
+	 */
+	DIDYOUKNOW(117),
+	/**
+	 * "Check the skill guide" messages
+	 */
+	LEVELUPMESSAGE(118),
+	/**
 	 * An unknown message type.
 	 */
 	UNKNOWN(-1);
