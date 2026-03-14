@@ -276,7 +276,7 @@ public class RuneLite
 			runelite_instance.start();
 			log.info("Starting runelite gateway server with {}..", runelite_instance.toString());
 			// GatewayServer server = new GatewayServer(runelite_instance);
-        	// server.start();
+		// server.start();
 
 			final long end = System.currentTimeMillis();
 			final long uptime = runtime.getUptime();

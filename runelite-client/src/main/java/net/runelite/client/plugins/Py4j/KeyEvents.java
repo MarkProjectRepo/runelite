@@ -26,4 +26,4 @@ public class KeyEvents {
         client.getCanvas().dispatchEvent(keyRelease);
         client.getCanvas().dispatchEvent(keyTyped);
     }
-} 
+}

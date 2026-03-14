@@ -59,12 +59,12 @@ public class Py4jInputListener extends MouseAdapter implements KeyListener
 						npc.setOverheadText("Hey, this is a " + npc.getName());
 						npc.setDead(true);
 						clickQueue.add(npc);
-						break;	
+						break;
 					}
 				}
 			}
 		}
-		
+
 		return super.mousePressed(e);
 	}
 
