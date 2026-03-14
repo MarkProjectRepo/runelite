@@ -1,0 +1,3 @@
+[submodule "runelite-python"]
+	path = runelite-python
+	url = https://github.com/MarkProjectRepo/runelite-python.git
