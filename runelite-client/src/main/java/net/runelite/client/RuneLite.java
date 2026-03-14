@@ -97,7 +97,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.LoggerFactory;
-import py4j.GatewayServer;
 
 @Singleton
 @Slf4j
@@ -276,7 +275,7 @@ public class RuneLite
 			runelite_instance.start();
 			log.info("Starting runelite gateway server with {}..", runelite_instance.toString());
 			// GatewayServer server = new GatewayServer(runelite_instance);
-        	// server.start();
+			// server.start();
 
 			final long end = System.currentTimeMillis();
 			final long uptime = runtime.getUptime();
@@ -725,10 +724,12 @@ public class RuneLite
 	}
 	// endregion
 
-	public Client getClient() {
+	public Client getClient()
+	{
 		return client;
 	}
-	public ClientUI getClientUI(){
+	public ClientUI getClientUI()
+	{
 		return clientUI;
 	}
 }
