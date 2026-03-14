@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.py4j;
+package net.runelite.client.plugins.Py4j;
 
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -40,6 +40,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.Py4j.KeyEvents;
 import net.runelite.client.ui.ClientUI;
 import py4j.GatewayServer;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -76,7 +77,7 @@ public class Py4j extends Plugin
 	private ClientUI clientUI;
 
 	@Getter
-	private final KeyEvents keyEvents = new KeyEvents();
+	private KeyEvents keyEvents = new KeyEvents();
 
 	@Getter
 	@Inject
@@ -140,7 +141,7 @@ public class Py4j extends Plugin
 			resizedImage = normalizeImageColors(resizedImage);
 		}
 
-		return resizedImage;
+		return (Image) resizedImage;
 	}
 
 	/**

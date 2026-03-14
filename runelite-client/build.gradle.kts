@@ -45,8 +45,6 @@ java {
 }
 
 dependencies {
-    implementation("net.sf.py4j:py4j:0.10.9.7")
-
     api("net.runelite:runelite-api:${project.version}")
     implementation(project(":jshell"))
     runtimeOnly("net.runelite:injected-client:${project.version}")

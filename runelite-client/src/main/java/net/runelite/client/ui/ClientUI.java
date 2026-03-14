@@ -127,6 +127,8 @@ import net.runelite.client.util.SwingUtil;
 import net.runelite.client.util.WinUtil;
 // import net.runelite.client.util.NPCClickHandler;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import javax.swing.event.MouseInputListener;
+import java.util.AbstractMap;
 
 @Slf4j
 @Singleton
@@ -540,20 +542,16 @@ public class ClientUI
 
 			final ConcurrentLinkedQueue<MouseEvent> clickQueue = new ConcurrentLinkedQueue<>();
 			// final NPCClickHandler npcClickHandler = new NPCClickHandler(this.client);
-			final MouseListener pointQueueListener = new MouseAdapter()
-	{
+			final MouseListener pointQueueListener = new MouseAdapter() {
 				@Override
-				public MouseEvent mouseClicked(MouseEvent e)
-	{
+				public MouseEvent mouseClicked(MouseEvent e) {
 					clickQueue.add(e);
 					return e;
 				}
-				public ConcurrentLinkedQueue<MouseEvent> getClickQueue()
-	{
+				public ConcurrentLinkedQueue<MouseEvent> getClickQueue() {
 					return clickQueue;
 				}
-				public void clearClickQueue()
-	{
+				public void clearClickQueue() {
 					clickQueue.clear();
 				}
 			};
