@@ -21,7 +21,6 @@ out/
 *.pyc
 __pycache__
 *.py
-runelite-python/
 .project
 .settings
 .springBeans
