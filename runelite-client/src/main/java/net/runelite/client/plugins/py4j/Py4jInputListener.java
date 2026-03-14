@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.Py4j;
+package net.runelite.client.plugins.py4j;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -50,25 +50,30 @@ public class Py4jInputListener extends MouseAdapter implements KeyListener
 	@Override
 	public MouseEvent mousePressed(MouseEvent e)
 	{
-		if (e.getButton() == MouseEvent.BUTTON1) {
+		if (e.getButton() == MouseEvent.BUTTON1)
+	{
 			IndexedObjectSet<? extends NPC> npcs = client.getTopLevelWorldView().npcs();
-			synchronized (npcs) {
-				for (NPC npc : npcs) {
-					if (npc.getConvexHull().contains(e.getX(), e.getY())) {
-						System.out.println("Clicked on NPC: " + npc.getName());
+			synchronized (npcs)
+	{
+				for (NPC npc : npcs)
+	{
+					if (npc.getConvexHull().contains(e.getX(), e.getY()))
+	{
+						// System.out.println("Clicked on NPC: " + npc.getName());
 						npc.setOverheadText("Hey, this is a " + npc.getName());
 						npc.setDead(true);
 						clickQueue.add(npc);
-						break;	
+						break;
 					}
 				}
 			}
 		}
-		
+
 		return super.mousePressed(e);
 	}
 
-	public void setClickQueue(ConcurrentLinkedQueue<Renderable> clickQueue) {
+	public void setClickQueue(ConcurrentLinkedQueue<Renderable> clickQueue)
+	{
 		this.clickQueue = clickQueue;
 	}
 
